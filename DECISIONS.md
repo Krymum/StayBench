@@ -150,3 +150,18 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
   Base path `/StayBench` (overridable with `BASE_PATH`/`SITE_URL`; the Pages workflow passes the values from
   `actions/configure-pages`).
 - **Outdated traces are not migrated**: a scenario version bump invalidates older traces for that scenario.
+
+## 0.2.0: findings from the first real agent run
+
+- **Agents are told the simulated date.** A Claude Code run on `timeout-ghost-booking` declined because it knew the
+  real date (2026-11-10) and judged a June 2026 stay to be in the past, while the simulator lives on 2026-02-01. The
+  request given to agents now starts with `Today's date: <scenario start date>.` and the MCP server instructions and
+  the local-model system prompt repeat it. Scenarios are unchanged.
+- **Price consent is no longer triggered by generic words.** "Please confirm the dates" was classified as a price
+  question because `$price` contained "confirm". The list now holds money words only, plus any amount with two
+  decimals; "confirm", "proceed", "accept", "approve", "go ahead" and their French equivalents were removed.
+- **Built-in `dates` rule**, checked after the scenario's rules: questions about the stay dates get "The dates in my
+  request are the ones I need".
+- **Traces replay only on the same StayBench major.minor.** These changes alter traveler answers, so 0.1 traces would
+  no longer replay. `verify` reports "recorded with StayBench X, current is Y; re-run it" instead of an opaque replay
+  mismatch. Behaviour-changing releases bump the minor version; patch releases keep behaviour identical.

@@ -71,9 +71,12 @@ describe("MCP server (in-process, Streamable HTTP handler)", () => {
     expect(book.inputSchema.required).toEqual(["prebook_id", "client_reference", "guest_name"]);
     expect(tools.find((t) => t.name === "search_hotels")!.annotations?.readOnlyHint).toBe(true);
     expect(client.getInstructions()).toMatch(/StayBench/);
+    expect(client.getInstructions()).toContain("Today's date in this simulation is 2026-02-01");
 
     const prompt = await client.getPrompt({ name: "traveler_request" });
-    expect(prompt.messages[0]!.content).toMatchObject({ type: "text", text: expect.stringMatching(/Lisbon/) });
+    const text = (prompt.messages[0]!.content as { type: string; text: string }).text;
+    expect(text.startsWith("Today's date: 2026-02-01.\n\n")).toBe(true);
+    expect(text).toContain("Lisbon");
   });
 
   it("returns provider errors as isError tool results", async () => {

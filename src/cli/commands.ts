@@ -77,7 +77,7 @@ export async function cmdServe(opts: ServeOptions, io: Io = defaultIo): Promise<
   io.err(`StayBench - scenario "${scenario.id}" v${scenario.version}: ${scenario.title}`);
   io.err(`Trace: ${tracePath}`);
   io.err("\nGive this request to your agent (also available as the MCP prompt \"traveler_request\"):\n");
-  io.err(`  ${scenario.traveler.request.trim()}\n`);
+  io.err(`${session.request.split("\n").map((l) => (l ? `  ${l}` : l)).join("\n")}\n`);
 
   let close: () => Promise<void>;
   if (opts.transport === "http") {

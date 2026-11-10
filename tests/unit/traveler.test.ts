@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_REPLY, Traveler, normalize } from "../../src/traveler/traveler.js";
+import { DATE_REPLY, DEFAULT_REPLY, Traveler, normalize } from "../../src/traveler/traveler.js";
 
 const traveler = new Traveler({
   request: "Find me a room.",
@@ -39,6 +39,20 @@ describe("Traveler", () => {
     });
     // "price" matches first even if "another hotel" also appears
     expect(traveler.answer("Another hotel has a better price?", quote).meta.intent).toBe("price_consent");
+  });
+
+  it("matches amounts with decimals as price questions, not generic confirmation words", () => {
+    expect(traveler.answer("Shall I proceed at 449.99?", quote).meta.intent).toBe("price_consent");
+    expect(traveler.answer("On part sur 449,99 ?", quote).meta.intent).toBe("price_consent");
+    expect(traveler.answer("Please confirm the room type", quote).meta.intent).toBeNull();
+  });
+
+  it("answers date questions with the built-in rule, after the scenario's rules", () => {
+    const a = traveler.answer("Your dates are in the past. Did you mean next year? Please confirm.", quote);
+    expect(a).toEqual({ answer: DATE_REPLY, meta: { intent: "dates" } });
+    expect(traveler.answer("Quelle date d'arrivée ?", quote).meta.intent).toBe("dates");
+    // A price question that mentions dates is still a price question.
+    expect(traveler.answer("For your dates the total is 449.99 EUR, OK?", quote).meta.intent).toBe("price_consent");
   });
 
   it("falls back to the default reply", () => {

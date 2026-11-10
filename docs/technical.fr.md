@@ -168,9 +168,16 @@ codes de session `UNKNOWN_TOOL`, `INVALID_ARGUMENTS`, `RUN_FINISHED`.
 Les règles sont testées dans l'ordre : la première dont un mot-clé apparaît dans la question normalisée (minuscules,
 accents retirés, mots-clés reconnus en début de mot) répond. Une règle a soit une réponse fixe (`reply`), soit une
 politique de consentement (`consent`) décidée sur le dernier prebook réussi (`max_total`, ou `always: accept|refuse`).
-`$price` se développe en la liste partagée de mots-clés de prix, anglais et français. La décision (`intent`,
-`decision`, `prebook_id`, `total`) est stockée dans le `meta` caché de la ligne de trace ; l'agent ne voit que le
-texte de la réponse.
+`$price` se développe en la liste partagée de mots liés à l'argent, anglais et français, et reconnaît aussi tout
+montant à deux décimales. Après les règles du scénario, une règle intégrée `dates` répond aux questions sur les dates
+du séjour. La décision (`intent`, `decision`, `prebook_id`, `total`) est stockée dans le `meta` caché de la ligne de
+trace ; l'agent ne voit que le texte de la réponse.
+
+### La date simulée
+
+L'agent reçoit la date simulée du run (la date de `start_time`) : `RunSession.request` (utilisé par `serve`, le
+prompt `traveler_request` et `runAgent`) commence par `Today's date: <date>.`, et `serverInstructions(today)` /
+`systemPrompt(today)` la répètent. Sinon, l'agent comparerait le séjour à la date réelle.
 
 ## 5. Serveur MCP
 

@@ -62,7 +62,10 @@ describe("OpenAICompatibleAgent", () => {
     expect(requests).toHaveLength(6);
     expect(requests[0]!.model).toBe("fake");
     expect(requests[0]!.messages.map((m) => m.role)).toEqual(["system", "user"]);
-    expect(requests[0]!.messages[1]!.content).toBe(happy.traveler.request);
+    expect(requests[0]!.messages[1]!.content).toBe(`Today's date: 2026-02-01.
+
+${happy.traveler.request.trim()}`);
+    expect(requests[0]!.messages[0]!.content).toContain("Today's date in this simulation is 2026-02-01");
     // The model never sees the structured constraints.
     expect(JSON.stringify(requests[0]!.messages)).not.toContain("refundable_required");
     expect(requests[5]!.messages.filter((m) => m.role === "tool")).toHaveLength(5);

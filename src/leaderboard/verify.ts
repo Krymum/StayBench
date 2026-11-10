@@ -54,6 +54,15 @@ export interface Leaderboard {
   entries: LeaderboardEntry[];
 }
 
+/**
+ * Simulator behaviour may change between minor versions (0.1 -> 0.2), so a trace only
+ * replays on the same major.minor. Patch releases keep behaviour identical.
+ */
+export function sameMinor(a: string, b: string): boolean {
+  const mm = (v: string) => v.split(".").slice(0, 2).join(".");
+  return mm(a) === mm(b);
+}
+
 function listTraces(dir: string): string[] {
   const out: string[] = [];
   for (const name of readdirSync(dir).sort()) {
@@ -97,6 +106,10 @@ export function verifySubmission(dir: string, scenarios: Scenario[], root = dir)
       }
       if (trace.header.run.scenario_version !== scenario.version) {
         errors.push(`${rel}: recorded on ${sid} v${trace.header.run.scenario_version}, current is v${scenario.version}`);
+        continue;
+      }
+      if (!sameMinor(trace.header.staybench_version, STAYBENCH_VERSION)) {
+        errors.push(`${rel}: recorded with StayBench ${trace.header.staybench_version}, current is ${STAYBENCH_VERSION}; re-run it`);
         continue;
       }
       if (results.some((r) => r.scenario_id === sid)) {

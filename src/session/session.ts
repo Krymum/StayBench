@@ -24,6 +24,19 @@ export interface SessionOptions {
   onEnd?: (session: RunSession) => void;
 }
 
+/** Simulated "today" of a run: the date part of its start time. */
+export function simulatedToday(run: RunConfig): string {
+  return run.start_time.slice(0, 10);
+}
+
+/**
+ * The request exactly as an agent receives it. Time is simulated, so the agent is told the
+ * simulated date; otherwise it would compare the stay with the real-world date.
+ */
+export function agentRequest(run: RunConfig): string {
+  return `Today's date: ${simulatedToday(run)}.\n\n${run.traveler.request.trim()}`;
+}
+
 function toOutcome(r: Result<unknown>): ToolOutcome {
   return r.ok ? { ok: true, data: r.data } : { ok: false, error: { ...r.error } };
 }
@@ -77,9 +90,14 @@ export class RunSession {
     return this.endLine;
   }
 
-  /** Text to hand to the agent as the traveler's request. */
+  /** Simulated date of the run (YYYY-MM-DD). The agent must use it, not the real-world date. */
+  get today(): string {
+    return simulatedToday(this.run);
+  }
+
+  /** Text to hand to the agent: the simulated date, then the traveler's request. */
   get request(): string {
-    return this.traveler.request;
+    return agentRequest(this.run);
   }
 
   call(tool: string, rawArgs: unknown): ToolOutcome {

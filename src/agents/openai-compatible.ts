@@ -1,5 +1,5 @@
 import * as z from "zod/v4";
-import { SERVER_INSTRUCTIONS } from "../mcp/server.js";
+import { serverInstructions } from "../mcp/server.js";
 import { TOOL_DESCRIPTIONS, TOOL_NAMES, TOOL_SCHEMAS } from "../session/tools.js";
 import type { Agent, AgentInput, ToolCaller } from "./types.js";
 
@@ -37,10 +37,13 @@ interface ChatMessage {
   tool_call_id?: string;
 }
 
-export const SYSTEM_PROMPT = `You are a travel booking agent acting for a traveler. You can only act through the provided tools.
-${SERVER_INSTRUCTIONS}
+/** System prompt of the local-model agent, with the run's simulated date. */
+export function systemPrompt(today: string): string {
+  return `You are a travel booking agent acting for a traveler. You can only act through the provided tools.
+${serverInstructions(today)}
 Rules: never invent information; use the exact values returned by the tools in your final report.
 You must end by calling submit_final_report exactly once.`;
+}
 
 /** Tool definitions in Chat Completions format, generated from the same Zod schemas as the MCP server. */
 export function openAITools() {
@@ -87,7 +90,7 @@ export class OpenAICompatibleAgent implements Agent {
   async run(call: ToolCaller, input: AgentInput): Promise<void> {
     const log = this.opts.log ?? (() => {});
     const messages: ChatMessage[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt(input.today) },
       { role: "user", content: input.request },
     ];
     let finished = false;

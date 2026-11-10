@@ -7,8 +7,10 @@ import type { ToolOutcome } from "../trace/types.js";
 export type ToolCaller = (tool: string, args: Record<string, unknown>) => Promise<ToolOutcome>;
 
 export interface AgentInput {
-  /** Natural-language request, as an LLM agent would receive it. */
+  /** Natural-language request, as an LLM agent would receive it (starts with the simulated date). */
   request: string;
+  /** Simulated date of the run (YYYY-MM-DD). */
+  today: string;
   /**
    * Structured version of the request. Only scripted agents use it: they cannot read text.
    * LLM agents never receive it.

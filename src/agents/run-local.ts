@@ -15,7 +15,7 @@ export async function runAgent(
   const session = new RunSession(toRunConfig(scenario), { ...opts, agent: { name: agent.name, ...opts.agent } });
   const transport = opts.caller ? await opts.caller(session) : { call: sessionCaller(session), close: async () => {} };
   try {
-    await agent.run(transport.call, { request: scenario.traveler.request, constraints: scenario.traveler.constraints });
+    await agent.run(transport.call, { request: session.request, today: session.today, constraints: scenario.traveler.constraints });
   } finally {
     await transport.close();
     session.close();

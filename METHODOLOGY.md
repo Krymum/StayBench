@@ -20,7 +20,9 @@ agent does not hammer a rate-limited API).
   of tool calls always produce the same responses, byte for byte.
 - **Virtual time.** The clock starts at the scenario's `start_time` and advances by a fixed tick (2 s) on each
   call, or by `wait(seconds)`. Prebooks expire after 15 minutes, on-request bookings resolve after a delay, and
-  rate-limit windows close, all in simulated time.
+  rate-limit windows close, all in simulated time. **The agent is told the simulated date**: the request it
+  receives starts with `Today's date: <start date>.`, and the MCP server instructions repeat it. Without this, an
+  agent that knows the real-world date would judge the stay to be in the past (found with Claude Code in 0.1).
 - **Realistic supplier semantics.** Search and rate results come from a cache and can be stale. The `refundable`
   flag in `get_rates` is a label; `get_cancellation_policy` is authoritative. Prices are per room for the whole
   stay. `prebook` returns the final total, taxes included. `book` deduplicates `client_reference` unless a
@@ -36,6 +38,11 @@ The traveler's request is free text given to the agent. The traveler also has sc
 keywords (English and French) and either a fixed answer or a price-consent policy (`accept if the latest prebook
 total is at most X`). The first matching rule answers. Price consent is decided on the price the agent actually
 obtained (the latest prebook), not on numbers parsed from the question.
+
+The shared price keyword list (`$price`) contains money words only (price, total, cost, budget, currencies…) and
+also matches any amount with decimals ("427.68"). Generic words such as "confirm" or "proceed" are not in it, so a
+question about dates or room type is not mistaken for a price approval. After the scenario's rules, a built-in rule
+answers questions about the stay dates ("The dates in my request are the ones I need").
 
 ## Scoring
 
@@ -176,6 +183,7 @@ Then check locally and open a pull request that only touches `results/`:
 staybench verify results
 ```
 
-Rules: one trace per scenario, recorded on the current scenario versions, unedited. Partial submissions are
+Rules: one trace per scenario, recorded on the current scenario versions and the current StayBench minor
+version (a minor release may change simulator behaviour, so older traces must be re-run), unedited. Partial submissions are
 listed as `incomplete`. Please say in `notes` how the agent was prompted; a submission produced by hand-written
 tool calls instead of an agent is against the spirit of the leaderboard and will be removed.

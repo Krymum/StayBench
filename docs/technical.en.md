@@ -164,8 +164,15 @@ session-level `UNKNOWN_TOOL`, `INVALID_ARGUMENTS`, `RUN_FINISHED`.
 Rules are checked in order; the first rule whose keywords match the normalized question (lowercase, accents
 removed, keywords matched at word starts) answers. A rule has either a fixed `reply`, or a `consent` policy decided
 on the latest successful prebook (`max_total`, or `always: accept|refuse`). `$price` expands to the shared
-English/French price keyword list. The decision (`intent`, `decision`, `prebook_id`, `total`) is stored in the
-hidden `meta` of the trace line; the agent only sees the answer text.
+English/French list of money words and also matches any amount with two decimals. After the scenario's rules, a
+built-in `dates` rule answers questions about the stay dates. The decision (`intent`, `decision`, `prebook_id`,
+`total`) is stored in the hidden `meta` of the trace line; the agent only sees the answer text.
+
+### The simulated date
+
+Agents are told the run's simulated date (`start_time`'s date): `RunSession.request` (used by `serve`, the
+`traveler_request` prompt and `runAgent`) starts with `Today's date: <date>.`, and `serverInstructions(today)` /
+`systemPrompt(today)` repeat it. Otherwise an agent would compare the stay with the real-world date.
 
 ## 5. MCP server
 

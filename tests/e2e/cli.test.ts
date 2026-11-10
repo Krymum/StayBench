@@ -82,7 +82,7 @@ describe("CLI binary", () => {
     const client = new Client({ name: "cli-test", version: "1.0.0" }, { versionNegotiation: { mode: "auto" } });
     await client.connect(transport);
     const scenario = findScenario("happy-path");
-    await new ScriptedGoodAgent().run(mcpCaller(client), { request: scenario.traveler.request, constraints: scenario.traveler.constraints });
+    await new ScriptedGoodAgent().run(mcpCaller(client), { request: scenario.traveler.request, today: scenario.start_time.slice(0, 10), constraints: scenario.traveler.constraints });
     await client.close();
 
     expect(stderr.join("")).toContain("Give this request to your agent");
@@ -107,7 +107,7 @@ describe("CLI binary", () => {
       const client = new Client({ name: "cli-test", version: "1.0.0" }, { versionNegotiation: { mode: "auto" } });
       await client.connect(new StreamableHTTPClientTransport(new URL(url)));
       const s = findScenario("rate-limit-429");
-      await new ScriptedGoodAgent().run(mcpCaller(client), { request: s.traveler.request, constraints: s.traveler.constraints });
+      await new ScriptedGoodAgent().run(mcpCaller(client), { request: s.traveler.request, today: s.start_time.slice(0, 10), constraints: s.traveler.constraints });
       await client.close();
       expect(readdirSync(dir)).toEqual(["t.jsonl"]);
       const io = capture();

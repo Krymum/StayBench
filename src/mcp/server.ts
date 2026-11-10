@@ -8,12 +8,16 @@ import { READ_ONLY_TOOLS, TOOL_DESCRIPTIONS, TOOL_NAMES, TOOL_SCHEMAS } from "..
 import type { ToolOutcome } from "../trace/types.js";
 import { STAYBENCH_VERSION } from "../version.js";
 
-export const SERVER_INSTRUCTIONS = `StayBench: a simulated hotel supplier used to evaluate booking agents.
+/** Server instructions, including the run's simulated date. */
+export function serverInstructions(today: string): string {
+  return `StayBench: a simulated hotel supplier used to evaluate booking agents.
+Today's date in this simulation is ${today}. Use it, not the real-world date: the stay dates are relative to it.
 Act on behalf of the traveler whose request you were given. Typical flow: search_hotels -> get_rates ->
 get_cancellation_policy -> prebook -> (ask_traveler if needed) -> book -> submit_final_report.
 The supplier behaves like a real one: prices can change at prebook, rates can sell out, bookings can be
 pending, errors can hide bookings that were actually created, and rate limits apply. Time is simulated:
 use wait() instead of sleeping. Always finish with submit_final_report.`;
+}
 
 export function toCallToolResult(o: ToolOutcome): CallToolResult {
   if (o.ok) return { content: [{ type: "text", text: JSON.stringify(o.data) }] };
@@ -24,7 +28,7 @@ export function toCallToolResult(o: ToolOutcome): CallToolResult {
 export function buildMcpServer(session: RunSession): McpServer {
   const server = new McpServer(
     { name: "staybench", version: STAYBENCH_VERSION },
-    { instructions: SERVER_INSTRUCTIONS },
+    { instructions: serverInstructions(session.today) },
   );
   for (const name of TOOL_NAMES) {
     const readOnly = READ_ONLY_TOOLS.has(name);

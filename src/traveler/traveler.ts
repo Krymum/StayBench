@@ -48,15 +48,26 @@ export interface TravelerAnswer {
 export const DEFAULT_REPLY = "I don't have a preference on that. Please use your judgement within my request.";
 
 /**
- * Keywords that signal a question about price or confirmation, in English and French.
- * Scenarios can use this list for their consent rule (`match: ["$price"]`).
+ * Keywords that signal a question about money, in English and French. Scenarios use this list
+ * for their consent rule (`match: ["$price"]`), which also matches any amount with decimals
+ * ("427.68"). Generic words such as "confirm" or "proceed" are deliberately absent: a question
+ * about dates or room type must not be mistaken for a price approval.
  */
 export const PRICE_KEYWORDS = [
-  "price", "cost", "total", "amount", "budget", "increase", "higher", "more expensive", "rate", "charge",
-  "confirm", "proceed", "accept", "approve", "okay with", "ok with", "go ahead",
-  "prix", "cout", "montant", "hausse", "augment", "plus cher", "tarif", "confirmer", "accepte", "valider",
+  "price", "cost", "total", "amount", "budget", "increase", "higher", "more expensive", "rate", "charge", "fee",
+  "prix", "cout", "montant", "hausse", "augment", "plus cher", "tarif", "frais",
   "eur", "gbp", "usd", "chf", "€", "£", "$",
 ];
+
+/** An amount with two decimals, e.g. "427.68" or "427,68". */
+const AMOUNT = /\d[.,]\d{2}(?!\d)/;
+
+/** Built-in rule, checked after the scenario's rules: questions about the stay dates. */
+export const DATE_KEYWORDS = [
+  "date", "check-in", "check in", "checkin", "check-out", "check out", "checkout", "arrival", "departure",
+  "in the past", "already passed", "arrivee", "depart", "passe",
+];
+export const DATE_REPLY = "The dates in my request are the ones I need. Please book for those dates.";
 
 /** Lowercase, strip accents, collapse whitespace. */
 export function normalize(text: string): string {
@@ -88,16 +99,26 @@ function expandKeywords(match: string[]): string[] {
   return match.flatMap((k) => (k === "$price" ? PRICE_KEYWORDS : [k])).map(normalize);
 }
 
+const DATE_RULE: ReplyRule & { keywords: string[]; amounts: boolean } = {
+  intent: "dates",
+  match: DATE_KEYWORDS,
+  reply: DATE_REPLY,
+  keywords: DATE_KEYWORDS.map(normalize),
+  amounts: false,
+};
+
 export class Traveler {
-  private readonly rules: Array<ReplyRule & { keywords: string[] }>;
+  private readonly rules: Array<ReplyRule & { keywords: string[]; amounts: boolean }>;
 
   constructor(readonly spec: TravelerSpec) {
     this.rules = (spec.replies ?? []).map((r) => {
       if ((r.reply === undefined) === (r.consent === undefined)) {
         throw new Error(`Traveler rule "${r.intent}": exactly one of reply or consent is required`);
       }
-      return { ...r, keywords: expandKeywords(r.match) };
+      return { ...r, keywords: expandKeywords(r.match), amounts: r.match.includes("$price") };
     });
+    // Scenario rules first; the built-in date rule only answers what they do not cover.
+    this.rules.push(DATE_RULE);
   }
 
   get request(): string {
@@ -106,7 +127,7 @@ export class Traveler {
 
   answer(question: string, ctx: TravelerContext): TravelerAnswer {
     const q = normalize(question);
-    const rule = this.rules.find((r) => r.keywords.some((k) => containsKeyword(q, k)));
+    const rule = this.rules.find((r) => (r.amounts && AMOUNT.test(q)) || r.keywords.some((k) => containsKeyword(q, k)));
     if (!rule) return { answer: this.spec.default_reply ?? DEFAULT_REPLY, meta: { intent: null } };
     if (rule.reply !== undefined) return { answer: rule.reply, meta: { intent: rule.intent } };
 
