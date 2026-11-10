@@ -340,11 +340,12 @@ Chemin de trace par défaut : `runs/<scénario>/<agent>-<horodatage UTC>.jsonl`.
 | `tests/unit/traveler`, `session` | Mots-clés, décisions de consentement, horloge, traces, meta caché |
 | `tests/unit/grader`, `leaderboard` | Chaque critère et plafond, détection de falsification, statuts de soumission, le dossier `results/` commité |
 | `tests/unit/openai-agent` | L'adaptateur face à un faux modèle déterministe |
+| `tests/unit/docs` | Le README liste chaque scénario et chaque outil, les liens relatifs existent |
 | `tests/integration/mcp` | MCP en process, HTTP réel, stdio lancé en sous-process |
 | `tests/scenarios` | Pour chaque scénario : bon agent à 100 avec rapport attendu figé, mauvais agent en échec sur ses critères ciblés, déterminisme et rejeu |
 | `tests/e2e` | Agent scripté → MCP Streamable HTTP → trace → rejeu → note sur tous les scénarios ; vrai binaire CLI en stdio et en HTTP |
 
-`pnpm test` lance tout (environ 170 tests, quelques secondes).
+`pnpm test` lance tout (179 tests, quelques secondes).
 
 ## 13. Étendre StayBench
 

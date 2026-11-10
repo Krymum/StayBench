@@ -331,11 +331,12 @@ Default trace path: `runs/<scenario>/<agent>-<UTC timestamp>.jsonl`.
 | `tests/unit/traveler`, `session` | Keyword matching, consent decisions, clock, tracing, hidden meta |
 | `tests/unit/grader`, `leaderboard` | Each criterion and cap, tampering detection, submission statuses, the committed `results/` |
 | `tests/unit/openai-agent` | The adapter against a deterministic fake model |
+| `tests/unit/docs` | README lists every scenario and tool, relative links resolve |
 | `tests/integration/mcp` | MCP in-process, real HTTP, spawned stdio |
 | `tests/scenarios` | For each scenario: good agent 100 with pinned report, bad agent fails its focus criteria, determinism and replay |
 | `tests/e2e` | Scripted agent → MCP Streamable HTTP → trace → replay → grade on all scenarios; real CLI binary over stdio and HTTP |
 
-`pnpm test` runs everything (about 170 tests, a few seconds).
+`pnpm test` runs everything (179 tests, a few seconds).
 
 ## 13. Extending StayBench
 
