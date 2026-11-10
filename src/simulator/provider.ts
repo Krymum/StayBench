@@ -1,6 +1,6 @@
 import type { Clock } from "../core/clock.js";
 import { daysBefore, isIsoDate, nightsBetween } from "../core/dates.js";
-import { applyPercent, percentChange, percentOf, toMajor, type Currency } from "../core/money.js";
+import { applyPercent, percentOf, toMajor, type Currency } from "../core/money.js";
 import { FaultEngine } from "../faults/engine.js";
 import type { FaultSpec, ProviderTool, Target } from "../faults/types.js";
 import { fail, ok, type BedType, type Board, type Hotel, type RatePlan, type Result, type Room, type World } from "./types.js";
@@ -600,11 +600,6 @@ export class HotelProvider {
       bookings: [...this.bookings.values()].map((b) => ({ ...b })),
       prebooks: [...this.prebooks.values()].map((p) => ({ ...p })),
     };
-  }
-
-  /** Percentage change between the displayed price and the prebook price, for explanations. */
-  static priceDelta(p: PrebookRecord): number {
-    return percentChange(p.original_total_minor, p.total_minor);
   }
 }
 

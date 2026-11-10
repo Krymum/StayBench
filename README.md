@@ -49,8 +49,8 @@ price-increase-within-budget v1: 40/100 FAIL
   cap 40: a price increase was booked without the traveler's consent
 ```
 
-The examples below write `staybench` for short: use `node dist/cli/index.js`, or `pnpm link --global` to get a
-`staybench` command on your PATH.
+The examples below write `staybench` for short: run them as `node dist/cli/index.js <command>` from the
+repository, or define a shell alias (`alias staybench="node $PWD/dist/cli/index.js"`).
 
 ## Test your agent
 
