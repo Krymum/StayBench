@@ -1,0 +1,11 @@
+{
+  "submitter": "Krymum",
+  "agent": {
+    "name": "Claude Code (trial run, 1 scenario)",
+    "model": "claude-opus-5-5",
+    "client": "claude -p with --mcp-config (Streamable HTTP), built-in tools disabled"
+  },
+  "date": "2026-11-10",
+  "staybench_version": "0.1.0",
+  "notes": "Test submission used to exercise the PR verification workflow. Not meant to be merged."
+}
