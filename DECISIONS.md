@@ -48,3 +48,28 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
   free-text question. Simple and reproducible; an oddly-worded question may not be recognised. Documented as a
   limitation in METHODOLOGY.md.
 - **Price decreases do not require consent.** The final report must still reflect the new, lower price.
+
+## MCP server
+
+- **SDK v2** (`@modelcontextprotocol/server`, `/client`, `/node`, spec 2026-07-28) rather than the v1 `@modelcontextprotocol/sdk`
+  package, which is now the maintenance line. Tool schemas use Zod v4 (`zod/v4`), as in the official docs.
+- **One process = one run.** The v2 Streamable HTTP handler is stateless (a fresh `McpServer` per request), so
+  every server instance is bound to the same `RunSession`, which holds all run state. stdio uses the same factory.
+- **HTTP binds to 127.0.0.1** with the SDK's Host/Origin guards, at `/mcp`.
+- **Tool results are JSON text.** Success: the payload as JSON. Failure: `{"error": {code, message, retry_after_s?}}`
+  with `isError: true`. No `outputSchema` (it would add a second contract to keep in sync).
+- **Arguments rejected by the MCP schema never reach the session**, so they are not traced and do not advance the
+  clock. They cannot change state, so replay is unaffected. Non-MCP callers (scripted agents, replay) get the same
+  validation inside the session as `INVALID_ARGUMENTS`, which is traced.
+- **Calls after `submit_final_report`** return `RUN_FINISHED` and are not traced: the end line closes the trace.
+- **Tick: 2 virtual seconds per call** by default (scenario-configurable).
+- **`traveler_request` MCP prompt** exposes the traveler's request, so MCP clients that surface prompts (e.g. as
+  slash commands) can start a run without copy-paste.
+
+## Traveler
+
+- **Consent decisions are based on the latest successful prebook**, not on numbers parsed from the question:
+  the traveler "looks at" the price the agent actually obtained. This avoids fragile number parsing (dates,
+  per-night vs total). If no prebook exists yet, the traveler asks for a confirmed price first.
+- **`$price` keyword macro** expands to a shared English/French list of price/confirmation keywords.
+- The full run config (world, faults, traveler) is embedded in the trace header, so a trace is replayable on its own.
