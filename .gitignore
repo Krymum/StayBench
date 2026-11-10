@@ -1,7 +1,7 @@
 node_modules/
 dist/
 coverage/
-runs/
+/runs/
 .astro/
 site/dist/
 *.log

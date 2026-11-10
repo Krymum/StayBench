@@ -26,3 +26,9 @@ jobs:
         run: pnpm -s staybench verify results
       - name: Build the site
         run: pnpm site:build
+      - name: Check the site has a page per submission
+        run: |
+          test -f site/dist/index.html
+          test -f site/dist/scenarios/index.html
+          test -f site/dist/runs/staybench/scripted-good/index.html
+          test -f site/dist/runs/staybench/scripted-bad/index.html

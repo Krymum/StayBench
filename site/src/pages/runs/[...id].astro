@@ -1,0 +1,123 @@
+---
+import Base from "../../layouts/Base.astro";
+import { REPO_URL, band, leaderboard, resultFor, url, type Entry } from "../../lib";
+
+export function getStaticPaths() {
+  return leaderboard.entries.map((e) => ({ params: { id: e.id }, props: { entry: e } }));
+}
+
+const { entry } = Astro.props as { entry: Entry };
+const { scenarios } = leaderboard;
+const labels: Record<string, string> = {
+  outcome: "Outcome",
+  constraints: "Constraints",
+  consent: "Consent",
+  integrity: "Integrity",
+  report_accuracy: "Report accuracy",
+};
+---
+<Base title={entry.meta.agent.name}>
+  <p class="muted"><a href={url("")}>← Leaderboard</a></p>
+  <h1>{entry.meta.agent.name}</h1>
+  <p class="meta muted">
+    by <strong>{entry.meta.submitter}</strong> · {entry.meta.date} · StayBench {entry.meta.staybench_version}
+    {entry.meta.agent.model && <> · model <code>{entry.meta.agent.model}</code></>}
+    {entry.meta.agent.client && <> · {entry.meta.agent.client}</>}
+  </p>
+  <div class="summary">
+    <div class="stat card"><span class="label">Score</span><span class="num big">{entry.score.toFixed(1)}</span></div>
+    <div class="stat card"><span class="label">Passed</span><span class="num big">{entry.passed}/{scenarios.length}</span></div>
+    <div class="stat card"><span class="label">Status</span><span class:list={["pill", entry.status]}>{entry.status}</span></div>
+  </div>
+  {entry.meta.notes && <p class="lede">{entry.meta.notes}</p>}
+  {entry.errors.length > 0 && (
+    <div class="card errors">
+      <h3>Verification errors</h3>
+      <ul>{entry.errors.map((e) => <li class="num">{e}</li>)}</ul>
+    </div>
+  )}
+
+  <h2>Scenarios</h2>
+  <div class="list">
+    {scenarios.map((s) => {
+      const r = resultFor(entry, s.id);
+      return (
+        <details class="card item" open={r !== undefined && !r.passed}>
+          <summary>
+            <span class:list={["chip", `b-${band(r?.score)}`]}>{r ? Math.round(r.score) : "–"}</span>
+            <span class="title">{s.title}</span>
+            <span class="muted small id">{s.id}</span>
+          </summary>
+          {r ? (
+            <div class="body">
+              <table>
+                <tbody>
+                  {r.criteria.map((c) => (
+                    <tr>
+                      <td class="crit">{labels[c.id] ?? c.id}<span class="muted small"> · weight {c.weight}</span></td>
+                      <td class="num r">{c.score === null ? "n/a" : `${Math.round(c.score * 100)}%`}</td>
+                      <td>
+                        {c.notes.length > 0 ? (
+                          <ul class="notes">{c.notes.map((n) => <li>{n}</li>)}</ul>
+                        ) : (
+                          <span class="muted small">{c.score === null ? "not applicable" : "ok"}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {r.caps.length > 0 && (
+                <p class="caps">{r.caps.map((c) => <span class="pill invalid">capped at {c.max}: {c.reason}</span>)}</p>
+              )}
+              <p class="muted small">
+                {r.stats.calls} tool calls · {r.stats.bookings_created} booking(s) created · {r.stats.virtual_duration_s}s simulated ·
+                <a href={`${REPO_URL}/blob/main/results/${entry.id}/${r.trace}`}>trace</a>
+              </p>
+            </div>
+          ) : (
+            <p class="body muted">Not submitted (counts as 0).</p>
+          )}
+        </details>
+      );
+    })}
+  </div>
+</Base>
+
+<style>
+  .meta { margin-bottom: 20px; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0 8px; }
+  .stat { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .stat .pill { align-self: flex-start; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .big { font-size: 28px; font-weight: 700; }
+  .errors { padding: 14px 18px; border-color: var(--low); margin-top: 16px; }
+  .errors ul { margin: 0; padding-left: 18px; font-size: 13px; }
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .item summary {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; list-style: none; flex-wrap: wrap;
+  }
+  .item summary::-webkit-details-marker { display: none; }
+  .item .title { font-weight: 600; }
+  .item .id { margin-left: auto; font-family: var(--mono); }
+  .body { padding: 0 14px 12px; }
+  .body table { font-size: 14px; }
+  .body td { vertical-align: top; }
+  .crit { white-space: nowrap; }
+  .r { text-align: right; white-space: nowrap; }
+  .notes { margin: 0; padding-left: 16px; }
+  .notes li { margin-bottom: 4px; }
+  .caps { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .caps .pill { white-space: normal; }
+  .small { font-size: 13px; }
+  .chip {
+    display: inline-grid; place-items: center; min-width: 40px; height: 26px; padding: 0 6px; border-radius: 6px;
+    font: 600 13px/1 var(--mono); color: var(--surface); background: var(--c);
+  }
+  .chip.b-none { color: var(--muted); }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  @media (max-width: 560px) {
+    .crit { white-space: normal; }
+    .body td { padding: 8px 6px; }
+  }
+</style>
