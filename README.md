@@ -1,52 +1,124 @@
+<div align="center">
+
 # StayBench
 
-**An open-source sandbox to test AI agents on hotel booking.** Your agent connects over MCP to a simulated hotel
-supplier, plays realistic scenarios with injected faults, and gets a deterministic score. No LLM judge, no paid
-API, no account.
+**Can your AI agent book a hotel when the supplier misbehaves?**
 
-The faults come from real multi-supplier hotel distribution: the price changes at prebook, the room sells out
-between two calls, the booking is "on request", the supplier times out *but creates the booking anyway*, a
-non-refundable rate is labelled refundable, taxes are missing from the displayed price, two rooms have almost
-the same name. A good booking agent must handle all of them without inventing anything.
+An open-source sandbox that plugs any agent into a simulated hotel supplier over MCP, injects the failures of real
+hotel distribution, and grades the run deterministically. No LLM judge. No paid API. Fully reproducible.
 
-- 15 versioned scenarios, deterministic world generated from a seed
-- MCP server (stdio and Streamable HTTP) with 10 tools, built on the official TypeScript SDK v2
-- Deterministic grader with per-criterion scores and readable explanations
-- Full JSONL trace of every run, replayable and re-gradable by anyone
-- Leaderboard where results are **self-reported, replay-verified** by CI
-  ([site](https://krymum.github.io/StayBench/))
+[![CI](https://github.com/Krymum/StayBench/actions/workflows/ci.yml/badge.svg)](https://github.com/Krymum/StayBench/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-0f5f5a)](LICENSE)
+![Node 22+](https://img.shields.io/badge/node-22%2B-0f5f5a)
+![MCP](https://img.shields.io/badge/MCP-stdio%20%7C%20Streamable%20HTTP-0f5f5a)
+![Grading](https://img.shields.io/badge/grading-deterministic-0f5f5a)
 
-Documentation: presentation ([English](docs/presentation.en.md) · [Français](docs/presentation.fr.md)),
-technical guide ([English](docs/technical.en.md) · [Français](docs/technical.fr.md)),
-[methodology](METHODOLOGY.md), [design decisions](DECISIONS.md).
+[**Leaderboard**](https://krymum.github.io/StayBench/) ·
+[Scenarios](https://krymum.github.io/StayBench/scenarios/) ·
+[Methodology](METHODOLOGY.md) ·
+Docs: [English](docs/presentation.en.md) / [Français](docs/presentation.fr.md)
 
-## Quick start (under 5 minutes)
+<br/>
 
-Requirements: Node.js 22+ and pnpm (`npm i -g pnpm`).
+<a href="https://krymum.github.io/StayBench/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/leaderboard-dark.png">
+    <img alt="The StayBench leaderboard: agents ranked by score, with a per-scenario breakdown" src="docs/assets/leaderboard-light.png" width="820">
+  </picture>
+</a>
+
+</div>
+
+## Why
+
+Booking through a supplier API looks easy: search, pick a rate, book. In real distribution, the price changes at
+prebook, the room sells out between two calls, the booking comes back "on request", a timeout hides a booking that
+was actually created, a non-refundable rate is labelled refundable, and taxes are missing from the displayed price.
+
+An agent that gets this wrong does not crash. It **confidently books the wrong thing**, accepts a price nobody
+approved, creates a duplicate, or tells the traveler a price that is not the one charged. StayBench makes these
+failures reproducible, measurable, and impossible to hide behind a nice final message.
+
+## Same trap, two agents
+
+The traveler asks for a refundable room in Paris, at most 500 EUR, and wants to approve any price change. Search
+shows 396.00 EUR; at prebook the supplier confirms **427.68 EUR**.
+
+<table>
+<tr><th>A naive agent books anyway and reports the old price</th><th>A careful agent asks first, then reports what was booked</th></tr>
+<tr><td>
+
+```
+price-increase-within-budget v2: 40/100 FAIL
+  consent            0%
+    - BK-0001: price confirmed without traveler
+      consent after +8.0% increase
+      (396.00 EUR -> 427.68 EUR)
+  report_accuracy   60%
+    - invented or wrong information: total_price
+      reported 396 but the booking total is 427.68
+  cap 40: a price increase was booked without
+          the traveler's consent
+```
+
+</td><td>
+
+```
+price-increase-within-budget v2: 100/100 PASS
+  outcome          100%
+  constraints      100%
+  consent          100%
+  integrity        100%
+  report_accuracy  100%
+```
+
+Every lost point comes with a sentence like the one on
+the left, computed from the supplier's ground truth.
+
+</td></tr>
+</table>
+
+## Leaderboard
+
+| Agent | Score | Passed |
+|---|---:|---:|
+| **Claude Code (Opus 5.5)**, via `claude -p` + StayBench MCP | **99.9** | 15/15 |
+| `scripted-good`: reference policy, no LLM | 100.0 | 15/15 |
+| `scripted-bad`: the classic mistakes, no LLM | 39.0 | 0/15 |
+
+As of 2026-11-10. Live board with per-scenario explanations: **[krymum.github.io/StayBench](https://krymum.github.io/StayBench/)**.
+Results are *self-reported, replay-verified*: CI replays every trace against the simulator and recomputes the score.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["Your agent<br/>Claude Code, Cursor,<br/>local model, custom"] -- "MCP<br/>stdio or HTTP" --> S["StayBench server<br/>10 tools"]
+    S --> P["Simulated supplier<br/>seeded world"]
+    F["Fault engine<br/>price change, sold out,<br/>timeout, 429, ..."] -.-> P
+    S <--> T["Simulated traveler<br/>scripted replies"]
+    S --> R[("JSONL trace")]
+    R --> G["Grader<br/>replay + 5 criteria"]
+    G --> L["Leaderboard<br/>replay-verified"]
+```
+
+- **Deterministic world.** Hotels, rooms, rates, taxes and cancellation policies come from a seed. Same scenario,
+  same calls, same responses, byte for byte. Time is simulated.
+- **Faults on cue.** Each scenario declares what goes wrong and when.
+- **A traveler to talk to.** `ask_traveler` gets scripted, deterministic answers ("I accept up to 450 EUR").
+- **Grounded grading.** The score comes from the supplier's final state, the trace and the final report.
+
+## Quick start
+
+Node.js 22+ and pnpm (`npm i -g pnpm`):
 
 ```sh
-git clone https://github.com/Krymum/StayBench.git
-cd StayBench
-pnpm install
-pnpm build
+git clone https://github.com/Krymum/StayBench.git && cd StayBench
+pnpm install && pnpm build
 
-# See the scenarios
-node dist/cli/index.js list
-
-# Watch the reference agent solve one, and the naive one fail it
-node dist/cli/index.js run --agent scripted-good --scenario price-increase-within-budget
-node dist/cli/index.js run --agent scripted-bad  --scenario price-increase-within-budget
-```
-
-The second run prints something like:
-
-```
-price-increase-within-budget v1: 40/100 FAIL
-  consent            0%  (weight 15)
-      - BK-0001: price confirmed without traveler consent after +8.0% increase (396.00 EUR -> 427.68 EUR)
-  report_accuracy   60%  (weight 20)
-      - invented or wrong information: total_price reported 396 but the booking total is 427.68 EUR
-  cap 40: a price increase was booked without the traveler's consent
+node dist/cli/index.js list                                                              # 15 scenarios
+node dist/cli/index.js run --agent scripted-bad  --scenario price-increase-within-budget # watch it fail
+node dist/cli/index.js run --agent scripted-good --scenario price-increase-within-budget # and pass
 ```
 
 The examples below write `staybench` for short: run them as `node dist/cli/index.js <command>` from the
@@ -54,35 +126,33 @@ repository, or define a shell alias (`alias staybench="node $PWD/dist/cli/index.
 
 ## Test your agent
 
-Start a run. The server prints the traveler's request (on stderr) and records a trace:
+Start a run. The server prints the traveler's request (with the simulated date) on stderr and records a trace:
 
 ```sh
 staybench serve --scenario timeout-ghost-booking --transport http
 # MCP endpoint (Streamable HTTP): http://127.0.0.1:3333/mcp
 ```
 
-Give the request to your agent, let it work, and make sure it ends with `submit_final_report`. The grade is
-printed as soon as the report arrives. Re-grade any trace later with `staybench grade runs/<scenario>/<file>.jsonl`.
+Give the request to your agent and let it work until `submit_final_report`. The grade is printed as soon as the
+report arrives. Re-grade any trace later with `staybench grade runs/<scenario>/<file>.jsonl`.
 
-### With Claude Code
-
-Register the HTTP endpoint once, then restart `staybench serve` with a different `--scenario` for each run:
+**With Claude Code**: register the endpoint once, then restart `serve` with another `--scenario` for each run.
+The request is also available as the MCP prompt `traveler_request`.
 
 ```sh
 claude mcp add --transport http staybench http://127.0.0.1:3333/mcp
 ```
 
-In Claude Code, the traveler's request is available as the MCP prompt `traveler_request`. You can also paste the
-text printed by `serve`. Over stdio instead (one registration per scenario):
+<details>
+<summary><b>Other MCP clients</b> (Claude Desktop, Cursor, MCP Inspector, stdio)</summary>
+
+Over stdio with Claude Code (one registration per scenario):
 
 ```sh
 claude mcp add staybench -- node /absolute/path/to/StayBench/dist/cli/index.js serve --scenario happy-path
 ```
 
-### With another MCP client
-
-Most desktop clients (Claude Desktop, Cursor, and others) accept the common `mcpServers` JSON configuration
-for stdio servers:
+Most desktop clients accept the common `mcpServers` JSON configuration:
 
 ```json
 {
@@ -103,35 +173,21 @@ npx @modelcontextprotocol/inspector node dist/cli/index.js serve --scenario happ
 
 Use `node dist/...` (not `pnpm staybench`) for stdio: stdout is the MCP channel and must stay clean.
 
-### With a local model (free)
+</details>
 
-Any OpenAI-compatible endpoint works: Ollama, llama.cpp server, LM Studio, vLLM.
+<details>
+<summary><b>With a free local model</b> (Ollama, llama.cpp, LM Studio, vLLM)</summary>
+
+Any OpenAI-compatible endpoint works. The model only receives the traveler's request and the tools.
 
 ```sh
 ollama pull qwen3:8b
 staybench run --agent local-openai --base-url http://localhost:11434/v1 --model qwen3:8b --all
 ```
 
-The model only receives the traveler's request and the tools, exactly like an MCP agent.
+</details>
 
-## Tools exposed to the agent
-
-| Tool | Purpose |
-|---|---|
-| `search_hotels` | Hotels in a city for a stay, with an indicative (possibly stale) `from_price` |
-| `get_rates` | Rooms and rates of a hotel, with a `refundable` *label* and `taxes_included` |
-| `get_cancellation_policy` | Authoritative cancellation terms of a rate |
-| `prebook` | Lock a rate and get the final price; `price_changed` tells if it moved |
-| `book` | Book a prebook with your `client_reference` (idempotency key) |
-| `get_booking` | Look up bookings by id or by client reference |
-| `cancel_booking` | Cancel a booking, returns the refunded amount |
-| `ask_traveler` | Ask the simulated traveler (scripted, deterministic answers) |
-| `wait` | Let simulated time pass (Retry-After, pending bookings) |
-| `submit_final_report` | Mandatory last step: booking id, total, currency, refundability, free-cancellation deadline |
-
-Time is simulated: nothing ever sleeps, and the same calls always produce the same responses.
-
-## Scenario catalog
+## The 15 scenarios
 
 | # | Scenario | Difficulty | What goes wrong | The agent must |
 |---|---|---|---|---|
@@ -151,19 +207,23 @@ Time is simulated: nothing ever sleeps, and the same calls always produce the sa
 | 14 | `taxes-excluded-budget` | medium | Displayed price excludes taxes | Apply the budget to the total with taxes |
 | 15 | `near-identical-rooms` | medium | Two rooms with near-identical names | Pick the room with the right bed type |
 
-Details and expected outcomes: [`scenarios/`](scenarios/) and the [site](https://krymum.github.io/StayBench/scenarios/).
+YAML sources in [`scenarios/`](scenarios/). Contributing one: [METHODOLOGY.md](METHODOLOGY.md#contributing-a-scenario).
 
-## How scoring works
+## Scoring
 
-Five criteria, computed from the supplier's final state, the trace and the final report: **outcome** (35),
-**constraints** (15), **consent** (15), **integrity** (15), **report accuracy** (20). Serious failures cap the
-score: booking over budget or with the wrong refundability (40), booking a price increase without consent (40),
-duplicate bookings (40), no booking when one was possible (30), no report (50), any wrong value in the report (60).
-A run passes at 80. See [METHODOLOGY.md](METHODOLOGY.md) for the details and the limits.
+| Criterion | Weight | Question |
+|---|---:|---|
+| Outcome | 35 | The right booking, or rightly none? |
+| Constraints | 15 | Budget with taxes, dates, refundability, room type respected? |
+| Consent | 15 | Every booked price increase approved by the traveler? |
+| Integrity | 15 | No duplicate, no forgotten phantom booking, no hammering? |
+| Report accuracy | 20 | Every reported value true? A wrong value counts as invented. |
 
-## Leaderboard
+Serious failures **cap** the score: a constraint violation, an unconsented increase or a duplicate (40), no
+booking when one was possible (30), no report (50), any wrong value in the report (60). A run passes at 80.
+Details and limits: [METHODOLOGY.md](METHODOLOGY.md).
 
-Run all scenarios, then open a pull request with your traces:
+## Submit your result
 
 ```sh
 staybench run --agent local-openai --base-url http://localhost:11434/v1 --model qwen3:8b \
@@ -171,10 +231,29 @@ staybench run --agent local-openai --base-url http://localhost:11434/v1 --model 
 staybench verify results
 ```
 
-CI replays each trace against the simulator and recomputes the score. Agents driven through an MCP client can
-submit too: see [METHODOLOGY.md](METHODOLOGY.md#submitting-a-result).
+Open a pull request that only touches `results/`. CI replays each trace and recomputes the score. Agents driven
+through an MCP client can submit too: see [METHODOLOGY.md](METHODOLOGY.md#submitting-a-result).
 
-## Development
+<details>
+<summary><b>The 10 tools exposed to the agent</b></summary>
+
+| Tool | Purpose |
+|---|---|
+| `search_hotels` | Hotels in a city for a stay, with an indicative (possibly stale) `from_price` |
+| `get_rates` | Rooms and rates of a hotel, with a `refundable` *label* and `taxes_included` |
+| `get_cancellation_policy` | Authoritative cancellation terms of a rate |
+| `prebook` | Lock a rate and get the final price; `price_changed` tells if it moved |
+| `book` | Book a prebook with your `client_reference` (idempotency key) |
+| `get_booking` | Look up bookings by id or by client reference |
+| `cancel_booking` | Cancel a booking, returns the refunded amount |
+| `ask_traveler` | Ask the simulated traveler (scripted, deterministic answers) |
+| `wait` | Let simulated time pass (Retry-After, pending bookings) |
+| `submit_final_report` | Mandatory last step: booking id, total, currency, refundability, free-cancellation deadline |
+
+</details>
+
+<details>
+<summary><b>Development and project layout</b></summary>
 
 ```sh
 pnpm test          # unit, scenario, end-to-end and CLI tests
@@ -201,8 +280,11 @@ results/       leaderboard submissions
 site/          Astro leaderboard site
 ```
 
-Design choices are logged in [DECISIONS.md](DECISIONS.md).
+Technical guide: [English](docs/technical.en.md) / [Français](docs/technical.fr.md). Design choices:
+[DECISIONS.md](DECISIONS.md).
+
+</details>
 
 ## License
 
-MIT
+MIT. Built on the official [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk).
