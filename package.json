@@ -1,0 +1,30 @@
+{
+  "name": "staybench",
+  "version": "0.1.0",
+  "description": "Open-source sandbox to test AI agents on hotel booking, with injected faults and deterministic grading.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@12.18.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "benchmark",
+    "hotel",
+    "travel",
+    "evaluation"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
