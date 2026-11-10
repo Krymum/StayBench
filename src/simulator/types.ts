@@ -14,6 +14,8 @@ export interface RatePlan {
   refundable: boolean;
   /** Free cancellation until N days before check-in (midnight UTC). Null when non-refundable. */
   freeCancelDaysBefore: number | null;
+  /** Rooms the supplier can still sell at this plan. Undefined = not limited. */
+  availableRooms?: number;
 }
 
 export interface Room {
@@ -63,6 +65,8 @@ export interface HotelSpec {
       nightly_net: number;
       refundable: boolean;
       free_cancel_days_before?: number;
+      /** Rooms still sellable at this plan; omit for unlimited. */
+      available_rooms?: number;
     }>;
   }>;
 }
@@ -88,6 +92,7 @@ export const ERROR_CODES = [
   "PREBOOK_ALREADY_USED",
   "DUPLICATE_CLIENT_REFERENCE",
   "ALREADY_CANCELLED",
+  "NOT_ENOUGH_ROOMS",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

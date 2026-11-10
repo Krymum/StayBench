@@ -80,7 +80,9 @@ export function constraintViolations(b: BookingRecord, c: Constraints, session: 
   if (b.check_in !== c.check_in || b.check_out !== c.check_out) {
     out.push(`wrong dates (${b.check_in} to ${b.check_out} instead of ${c.check_in} to ${c.check_out})`);
   }
-  if (b.adults !== c.adults) out.push(`wrong occupancy (${b.adults} adults instead of ${c.adults})`);
+  if (b.adults !== c.adults) out.push(`wrong occupancy (${b.adults} adults per room instead of ${c.adults})`);
+  const wantRooms = c.rooms ?? 1;
+  if (b.rooms !== wantRooms) out.push(`wrong number of rooms (${b.rooms} instead of ${wantRooms})`);
   if (c.max_total) {
     const max = Math.round(c.max_total.amount * 100);
     if (b.currency !== c.max_total.currency) out.push(`booked in ${b.currency}, budget is in ${c.max_total.currency}`);
@@ -195,7 +197,14 @@ function gradeIntegrity(x: Ctx): CriterionResult {
   const r: CriterionResult = { id: "integrity", weight: WEIGHTS.integrity, score: 1, notes: [] };
   if (x.active.length > 1) {
     r.score = 0;
-    r.notes.push(`${x.active.length} active bookings for a single request (${x.active.map((b) => b.booking_id).join(", ")}): duplicate booking`);
+    const ids = x.active.map((b) => b.booking_id).join(", ");
+    const wantRooms = x.scenario.traveler.constraints.rooms ?? 1;
+    const totalRooms = x.active.reduce((n, b) => n + b.rooms, 0);
+    r.notes.push(
+      wantRooms > 1 && totalRooms <= wantRooms
+        ? `${x.active.length} separate bookings (${ids}) instead of one booking for ${wantRooms} rooms`
+        : `${x.active.length} active bookings for a single request (${ids}): duplicate booking`,
+    );
   }
   // Ghost bookings the agent never noticed.
   const seen = new Set<string>();

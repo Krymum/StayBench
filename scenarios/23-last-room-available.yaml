@@ -1,0 +1,65 @@
+id: last-room-available
+version: 1
+title: Only one room left, two needed
+description: >
+  The cheapest hotel shows rooms_left 1 for the only rate in budget; the travelers need two rooms on one
+  booking. Booking one room there and another elsewhere splits the stay. The agent must find a rate with
+  two rooms available.
+tags: [multi-room, availability, constraints]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Paris, 18 to 20 September 2026: two double rooms for two couples, on the same booking. Our budget is
+    900 EUR in total for both rooms, taxes included. Name: Camille Roux.
+  constraints:
+    city: PAR
+    check_in: "2026-09-18"
+    check_out: "2026-09-20"
+    adults: 2
+    rooms: 2
+    guest_name: Camille Roux
+    max_total: { amount: 900, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 900, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above our budget." }
+    - intent: rooms
+      match: ["room", "split", "separate", "chambre", "two hotels", "different hotel"]
+      reply: "Both rooms must be in the same hotel, on one booking."
+world:
+  seed: 2323
+  generate_cities: [BER, NYC]
+  hotels_per_city: 5
+  hotels:
+    - id: H-PAR-401
+      name: Hotel Lumen Bastille
+      city: PAR
+      district: Bastille
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 160, refundable: true, free_cancel_days_before: 2, available_rooms: 1 }
+    - id: H-PAR-402
+      name: Maison Harbor Saint-Germain
+      city: PAR
+      district: Saint-Germain
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 190, refundable: true, free_cancel_days_before: 2 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints, outcome]
+  rationale: >
+    Hotel Lumen shows 704.00 EUR for two rooms but only one room is left (prebooking two fails with
+    NOT_ENOUGH_ROOMS). Correct: book two rooms at Maison Harbor in one booking, 836.00 EUR.

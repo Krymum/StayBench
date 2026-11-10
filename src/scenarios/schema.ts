@@ -30,6 +30,7 @@ const hotelSpec = z.strictObject({
           nightly_net: z.number().positive(),
           refundable: z.boolean(),
           free_cancel_days_before: z.number().int().min(0).max(60).optional(),
+          available_rooms: z.number().int().min(0).max(50).optional(),
         }),
       ).min(1),
     }),
@@ -85,7 +86,9 @@ export const scenarioSchema = z.strictObject({
       city: z.string().length(3),
       check_in: isoDate,
       check_out: isoDate,
+      /** Adults per room. */
       adults: z.number().int().min(1),
+      rooms: z.number().int().min(1).max(4).optional(),
       guest_name: z.string(),
       max_total: z.strictObject({ amount: z.number().positive(), currency }).optional(),
       refundable_required: z.boolean().default(false),

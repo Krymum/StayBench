@@ -7,6 +7,7 @@ import { fail, ok, type BedType, type Board, type Hotel, type RatePlan, type Res
 
 export const PREBOOK_TTL_S = 900;
 export const MAX_NIGHTS = 30;
+export const MAX_ROOMS = 4;
 
 // ---------------------------------------------------------------------------
 // Agent-facing payloads (snake_case, decimal amounts)
@@ -15,7 +16,10 @@ export const MAX_NIGHTS = 30;
 export interface StayQuery {
   check_in: string;
   check_out: string;
+  /** Adults per room. */
   adults: number;
+  /** Number of identical rooms. Default 1. */
+  rooms?: number;
 }
 
 export interface SearchHotelsArgs extends StayQuery {
@@ -45,6 +49,8 @@ export interface RateView {
   taxes_included: boolean;
   /** Label as shown by the provider. May be wrong; see get_cancellation_policy. */
   refundable: boolean;
+  /** Rooms still available at this rate, only when the supplier limits them. */
+  rooms_left?: number;
 }
 
 export interface RoomView {
@@ -62,6 +68,8 @@ export interface RatesView {
   check_out: string;
   nights: number;
   currency: Currency;
+  /** Number of rooms the prices are for, only when more than 1. */
+  rooms_requested?: number;
   rooms: RoomView[];
 }
 
@@ -84,6 +92,8 @@ export interface PrebookView {
   price_changed: boolean;
   previous_price?: number;
   expires_at: string;
+  /** Number of rooms, only when more than 1. */
+  rooms?: number;
 }
 
 export type BookingStatus = "confirmed" | "pending" | "rejected" | "cancelled";
@@ -100,6 +110,8 @@ export interface BookingView {
   check_in: string;
   check_out: string;
   adults: number;
+  /** Number of rooms, only when more than 1. */
+  rooms?: number;
   guest_name: string;
   total_price: number;
   currency: Currency;
@@ -138,6 +150,7 @@ interface ResolvedRate {
   checkIn: string;
   checkOut: string;
   adults: number;
+  rooms: number;
   nights: number;
 }
 
@@ -166,6 +179,7 @@ export interface BookingRecord {
   check_in: string;
   check_out: string;
   adults: number;
+  rooms: number;
   guest_name: string;
   total_minor: number;
   currency: Currency;
@@ -190,8 +204,11 @@ export interface ProviderOptions {
 
 const RATE_SEP = "~";
 
+/** Stay-specific rate id. The rooms suffix only appears for more than one room, so single-room ids never change. */
 export function makeRateId(planId: string, q: StayQuery): string {
-  return [planId, q.check_in, q.check_out, String(q.adults)].join(RATE_SEP);
+  const parts = [planId, q.check_in, q.check_out, String(q.adults)];
+  if ((q.rooms ?? 1) > 1) parts.push(String(q.rooms));
+  return parts.join(RATE_SEP);
 }
 
 /**
@@ -241,20 +258,28 @@ export class HotelProvider {
     if (!Number.isInteger(q.adults) || q.adults < 1 || q.adults > 8) {
       return fail("INVALID_REQUEST", "adults must be an integer between 1 and 8.");
     }
+    const rooms = q.rooms ?? 1;
+    if (!Number.isInteger(rooms) || rooms < 1 || rooms > MAX_ROOMS) {
+      return fail("INVALID_REQUEST", "rooms must be an integer between 1 and " + MAX_ROOMS + ".");
+    }
     return ok(nights);
   }
 
   private resolveRate(rateId: string): Result<ResolvedRate> {
     const parts = rateId.split(RATE_SEP);
-    if (parts.length !== 4) return fail("NOT_FOUND", `Unknown rate_id "${rateId}".`);
-    const [planId, checkIn, checkOut, adultsStr] = parts as [string, string, string, string];
+    if (parts.length !== 4 && parts.length !== 5) return fail("NOT_FOUND", `Unknown rate_id "${rateId}".`);
+    const [planId, checkIn, checkOut, adultsStr, roomsStr] = parts as [string, string, string, string, string?];
     const entry = this.plans.get(planId);
-    if (!entry || !/^\d+$/.test(adultsStr)) return fail("NOT_FOUND", `Unknown rate_id "${rateId}".`);
-    const q = { check_in: checkIn, check_out: checkOut, adults: Number(adultsStr) };
+    const isInt = (v: string) => /^\d+$/.test(v);
+    // Canonical form only: a rooms suffix must be present for 2+ rooms and absent for 1.
+    if (!entry || !isInt(adultsStr) || (roomsStr !== undefined && (!isInt(roomsStr) || Number(roomsStr) < 2))) {
+      return fail("NOT_FOUND", `Unknown rate_id "${rateId}".`);
+    }
+    const q = { check_in: checkIn, check_out: checkOut, adults: Number(adultsStr), rooms: roomsStr === undefined ? 1 : Number(roomsStr) };
     const stay = this.validateStay(q);
     if (!stay.ok) return stay;
     if (q.adults > entry.room.maxOccupancy) return fail("NOT_FOUND", `Unknown rate_id "${rateId}".`);
-    return ok({ rateId, ...entry, checkIn, checkOut, adults: q.adults, nights: stay.data });
+    return ok({ rateId, ...entry, checkIn, checkOut, adults: q.adults, rooms: q.rooms, nights: stay.data });
   }
 
   private target(r: { hotel: Hotel; room?: Room; plan?: RatePlan }): Target {
@@ -263,7 +288,7 @@ export class HotelProvider {
 
   /** Price for a stay, in minor units. `adjusted` applies sticky price changes. */
   private price(r: ResolvedRate, adjusted: boolean): { net: number; taxes: number; total: number } {
-    let net = r.plan.nightlyNetMinor * r.nights;
+    let net = r.plan.nightlyNetMinor * r.nights * r.rooms;
     if (adjusted) for (const pct of this.priceChanges.get(r.rateId) ?? []) net = applyPercent(net, pct);
     const taxes = percentOf(net, r.hotel.taxPercent);
     return { net, taxes, total: net + taxes };
@@ -274,6 +299,24 @@ export class HotelProvider {
     const p = this.price(r, false);
     const excluded = this.faults.active("taxes_excluded", this.target(r)) !== undefined;
     return excluded ? { amount: p.net, taxesIncluded: false } : { amount: p.total, taxesIncluded: true };
+  }
+
+  /** Rooms still available for a plan, or undefined when the supplier does not limit them. */
+  private roomsLeft(plan: RatePlan): number | undefined {
+    if (plan.availableRooms === undefined) return undefined;
+    let used = 0;
+    for (const b of this.bookings.values()) {
+      if (b.plan_id === plan.id && (b.status === "confirmed" || b.status === "pending")) used += b.rooms;
+    }
+    return Math.max(0, plan.availableRooms - used);
+  }
+
+  private notEnoughRooms(r: ResolvedRate): Result<never> | undefined {
+    const left = this.roomsLeft(r.plan);
+    if (left !== undefined && r.rooms > left) {
+      return fail("NOT_ENOUGH_ROOMS", "Only " + left + " room(s) left at this rate, " + r.rooms + " requested.");
+    }
+    return undefined;
   }
 
   private deadline(plan: RatePlan, checkIn: string): string | null {
@@ -315,6 +358,7 @@ export class HotelProvider {
       check_in: b.check_in,
       check_out: b.check_out,
       adults: b.adults,
+      ...(b.rooms > 1 ? { rooms: b.rooms } : {}),
       guest_name: b.guest_name,
       total_price: toMajor(b.total_minor),
       currency: b.currency,
@@ -346,7 +390,7 @@ export class HotelProvider {
         for (const plan of room.plans) {
           const r: ResolvedRate = {
             rateId: makeRateId(plan.id, args), hotel: h, room, plan,
-            checkIn: args.check_in, checkOut: args.check_out, adults: args.adults, nights: stay.data,
+            checkIn: args.check_in, checkOut: args.check_out, adults: args.adults, rooms: args.rooms ?? 1, nights: stay.data,
           };
           const d = this.displayed(r);
           if (!best || d.amount < best.amount) best = d;
@@ -384,7 +428,7 @@ export class HotelProvider {
         rates: room.plans.map((plan) => {
           const r: ResolvedRate = {
             rateId: makeRateId(plan.id, args), hotel, room, plan,
-            checkIn: args.check_in, checkOut: args.check_out, adults: args.adults, nights: stay.data,
+            checkIn: args.check_in, checkOut: args.check_out, adults: args.adults, rooms: args.rooms ?? 1, nights: stay.data,
           };
           const d = this.displayed(r);
           const mislabel = this.faults.active("mislabeled_refundable", this.target(r));
@@ -395,13 +439,16 @@ export class HotelProvider {
             currency: hotel.currency,
             taxes_included: d.taxesIncluded,
             refundable: mislabel ? (mislabel.label ?? true) : plan.refundable,
+            ...(plan.availableRooms !== undefined ? { rooms_left: this.roomsLeft(plan) } : {}),
           };
         }),
       });
     }
     return ok({
       hotel_id: hotel.id, hotel_name: hotel.name, check_in: args.check_in, check_out: args.check_out,
-      nights: stay.data, currency: hotel.currency, rooms,
+      nights: stay.data, currency: hotel.currency,
+      ...((args.rooms ?? 1) > 1 ? { rooms_requested: args.rooms } : {}),
+      rooms,
     });
   }
 
@@ -442,6 +489,8 @@ export class HotelProvider {
       this.soldOut.add(rate.rateId);
       return fail("SOLD_OUT", "This rate is no longer available.");
     }
+    const short = this.notEnoughRooms(rate);
+    if (short) return short;
 
     const pc = this.faults.fire("price_change", "prebook", target, undefined, (f) => ({ rate_id: rate.rateId, percent: f.percent }));
     if (pc) this.priceChanges.set(rate.rateId, [...(this.priceChanges.get(rate.rateId) ?? []), pc.percent]);
@@ -474,6 +523,7 @@ export class HotelProvider {
       price_changed: changed,
       ...(changed ? { previous_price: toMajor(original.total) } : {}),
       expires_at: new Date(rec.expires_at_ms).toISOString(),
+      ...(rate.rooms > 1 ? { rooms: rate.rooms } : {}),
     });
   }
 
@@ -512,6 +562,8 @@ export class HotelProvider {
       pb.used = true;
       return fail("SOLD_OUT", "The room sold out before the booking could be confirmed.");
     }
+    const short = this.notEnoughRooms(rate.data);
+    if (short) return short;
 
     const onReq = this.faults.fire("on_request", "book", target, undefined, (f) => ({ outcome: f.outcome }));
     const rec = this.createBooking(pb, rate.data, args, onReq ? "pending" : "confirmed", {
@@ -541,6 +593,7 @@ export class HotelProvider {
       check_in: rate.checkIn,
       check_out: rate.checkOut,
       adults: rate.adults,
+      rooms: rate.rooms,
       guest_name: args.guest_name,
       total_minor: pb.total_minor,
       currency: pb.currency,

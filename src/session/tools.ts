@@ -4,7 +4,8 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD").desc
 const stay = {
   check_in: date.describe("Check-in date, YYYY-MM-DD"),
   check_out: date.describe("Check-out date, YYYY-MM-DD"),
-  adults: z.number().int().min(1).max(8).describe("Number of adults in the room"),
+  adults: z.number().int().min(1).max(8).describe("Number of adults per room"),
+  rooms: z.number().int().min(1).max(4).optional().describe("Number of identical rooms (default 1). Prices cover all rooms"),
 };
 
 export const finalReportSchema = z.object({

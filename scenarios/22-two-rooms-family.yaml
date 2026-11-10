@@ -1,0 +1,72 @@
+id: two-rooms-family
+version: 1
+title: Two couples, two rooms, one booking
+description: >
+  Two couples travel together and need two double rooms. A family room for four is far cheaper, but it is a
+  single room. The agent must search for two rooms and book both in one booking.
+tags: [multi-room, occupancy, constraints]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    We are two couples travelling together to Lisbon, 3 to 5 July 2026. We need two double rooms, one per
+    couple, in the same hotel and on the same booking. Up to 700 EUR in total for both rooms, taxes
+    included. Name: Sofia Martins.
+  constraints:
+    city: LIS
+    check_in: "2026-07-03"
+    check_out: "2026-07-05"
+    adults: 2
+    rooms: 2
+    guest_name: Sofia Martins
+    max_total: { amount: 700, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 700, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above our budget." }
+    - intent: rooms
+      match: ["room", "family", "chambre", "share", "together"]
+      reply: "We need two separate double rooms, one per couple. A single family room won't do."
+world:
+  seed: 2222
+  generate_cities: [ROM, LON]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LIS-501
+      name: Casa Atlas Alfama
+      city: LIS
+      district: Alfama
+      stars: 3
+      rooms:
+        - id: R1
+          name: Family Room
+          bed_type: double
+          max_occupancy: 4
+          plans:
+            - { code: FLEX, nightly_net: 220, refundable: true, free_cancel_days_before: 2 }
+        - id: R2
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 150, refundable: true, free_cancel_days_before: 2 }
+    - id: H-LIS-502
+      name: Hotel Meridian Avenida
+      city: LIS
+      district: Avenida
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 175, refundable: true, free_cancel_days_before: 2 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints, outcome]
+  rationale: >
+    One family room for four at Casa Atlas costs 466.40 EUR, but it is one room. Correct: search for two
+    rooms for 2 adults each and book two Standard Double Rooms at Casa Atlas in one booking, 636.00 EUR
+    (Hotel Meridian is 742.00 EUR, over budget).

@@ -82,7 +82,8 @@ Everything is re-exported from `src/index.ts`, so StayBench can also be used as 
 
 ### Identifiers and prices
 
-- **Rate id** = `<plan_id>~<check_in>~<check_out>~<adults>`, e.g. `H-LIS-101-R1-FLEX~2026-03-12~2026-03-14~2`.
+- **Rate id** = `<plan_id>~<check_in>~<check_out>~<adults>[~<rooms>]`, e.g. `H-LIS-101-R1-FLEX~2026-03-12~2026-03-14~2`.
+  The rooms suffix only appears for 2+ rooms, so single-room ids are unchanged.
   It is stay-specific and parseable, so `prebook` needs no hidden state from `get_rates`.
 - **Prebook ids** `PB-0001`, **booking ids** `BK-0001`: sequential, hence deterministic.
 - **Money** is stored in integer minor units. Price = nightly net × nights, taxes = round(net × tax%), total = net +
@@ -94,9 +95,9 @@ Everything is re-exported from `src/index.ts`, so StayBench can also be used as 
 | Operation | Behaviour |
 |---|---|
 | `search_hotels` | Hotels of the city with at least one room fitting the occupancy; `from_price` = cheapest displayed rate |
-| `get_rates` | Rooms fitting the occupancy and their rates, with the displayed price, `taxes_included` and the `refundable` label |
+| `get_rates` | Rooms fitting the occupancy and their rates, with the displayed price (all rooms), `taxes_included`, the `refundable` label and, when limited, `rooms_left` |
 | `get_cancellation_policy` | The true policy of the plan |
-| `prebook` | Final total with taxes, `price_changed` and `previous_price` when it differs from the displayed price; expires after 15 minutes; single-use |
+| `prebook` | Final total with taxes, `price_changed` and `previous_price` when it differs from the displayed price; expires after 15 minutes; single-use; `NOT_ENOUGH_ROOMS` when fewer rooms are left than requested (re-checked at book) |
 | `book` | Checks, in order: rate limit, required fields, client-reference deduplication, prebook existence/use/expiry, injected errors, sell-out, on-request |
 | `get_booking` | By `booking_id` or `client_reference`; returns a list |
 | `cancel_booking` | Full refund until the deadline, nothing after |
@@ -143,8 +144,8 @@ with its fault engine, and the traveler. Then, for each `call(tool, args)`:
 
 | Tool | Arguments |
 |---|---|
-| `search_hotels` | `city`, `check_in`, `check_out`, `adults` |
-| `get_rates` | `hotel_id`, `check_in`, `check_out`, `adults` |
+| `search_hotels` | `city`, `check_in`, `check_out`, `adults` (per room), `rooms?` (default 1) |
+| `get_rates` | `hotel_id`, `check_in`, `check_out`, `adults` (per room), `rooms?` (default 1) |
 | `get_cancellation_policy` | `rate_id` |
 | `prebook` | `rate_id` |
 | `book` | `prebook_id`, `client_reference`, `guest_name` |
@@ -156,7 +157,7 @@ with its fault engine, and the traveler. Then, for each `call(tool, args)`:
 
 Tool results are JSON text. Success: the payload. Failure: `{"error": {"code", "message", "retry_after_s"?}}` with
 `isError: true`. Error codes: `INVALID_REQUEST`, `NOT_FOUND`, `RATE_LIMITED`, `TIMEOUT`, `UPSTREAM_ERROR`,
-`SOLD_OUT`, `PREBOOK_EXPIRED`, `PREBOOK_ALREADY_USED`, `DUPLICATE_CLIENT_REFERENCE`, `ALREADY_CANCELLED`, plus the
+`SOLD_OUT`, `PREBOOK_EXPIRED`, `PREBOOK_ALREADY_USED`, `DUPLICATE_CLIENT_REFERENCE`, `ALREADY_CANCELLED`, `NOT_ENOUGH_ROOMS`, plus the
 session-level `UNKNOWN_TOOL`, `INVALID_ARGUMENTS`, `RUN_FINISHED`.
 
 ### The traveler
@@ -214,6 +215,7 @@ traveler:
     bed_type: twin                              # optional
     min_stars: 4                                # optional
     board: breakfast                            # optional: room_only | breakfast
+    rooms: 2                                    # optional, default 1 (adults is per room)
   replies:
     - intent: price_consent
       match: ["$price"]
@@ -340,12 +342,13 @@ Default trace path: `runs/<scenario>/<agent>-<UTC timestamp>.jsonl`.
 | `tests/unit/traveler`, `session` | Keyword matching, consent decisions, clock, tracing, hidden meta |
 | `tests/unit/grader`, `leaderboard` | Each criterion and cap, tampering detection, submission statuses, the committed `results/` |
 | `tests/unit/openai-agent` | The adapter against a deterministic fake model |
+| `tests/unit/multi-room` | Room pricing, rate ids, `rooms_left`, `NOT_ENOUGH_ROOMS`, multi-room grading |
 | `tests/unit/docs` | README lists every scenario and tool, relative links resolve |
 | `tests/integration/mcp` | MCP in-process, real HTTP, spawned stdio |
 | `tests/scenarios` | For each scenario: good agent 100 with pinned report, bad agent fails its focus criteria, determinism and replay |
 | `tests/e2e` | Scripted agent → MCP Streamable HTTP → trace → replay → grade on all scenarios; real CLI binary over stdio and HTTP |
 
-`pnpm test` runs everything (206 tests, a few seconds).
+`pnpm test` runs everything (222 tests, a few seconds).
 
 ## 13. Extending StayBench
 

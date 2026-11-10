@@ -82,9 +82,9 @@ Every lost point comes with a sentence like these, computed from the supplier's 
 
 | Agent | Score | Passed |
 |---|---:|---:|
-| **Claude Code (Opus 5.5)**, via `claude -p` + StayBench MCP, scenarios 01-15 | **99.9** | 15/15 |
-| `scripted-good`: reference policy, no LLM | 100.0 | 21/21 |
-| `scripted-bad`: the classic mistakes, no LLM | 39.1 | 0/21 |
+| **Claude Code (Opus 5.5)**, via `claude -p` + StayBench MCP | **99.9** | 23/23 |
+| `scripted-good`: reference policy, no LLM | 100.0 | 23/23 |
+| `scripted-bad`: the classic mistakes, no LLM | 38.9 | 0/23 |
 
 As of 2026-11-10. Live board with per-scenario explanations: **[krymum.github.io/StayBench](https://krymum.github.io/StayBench/)**.
 Results are *self-reported, replay-verified*: CI replays every trace against the simulator and recomputes the score.
@@ -119,7 +119,7 @@ Node.js 22+ and pnpm (`npm i -g pnpm`):
 git clone https://github.com/Krymum/StayBench.git && cd StayBench
 pnpm install && pnpm build
 
-node dist/cli/index.js list                                                              # 21 scenarios
+node dist/cli/index.js list                                                              # 23 scenarios
 node dist/cli/index.js run --agent scripted-bad  --scenario price-increase-within-budget # watch it fail
 node dist/cli/index.js run --agent scripted-good --scenario price-increase-within-budget # and pass
 ```
@@ -190,7 +190,7 @@ staybench run --agent local-openai --base-url http://localhost:11434/v1 --model 
 
 </details>
 
-## The 21 scenarios
+## The 23 scenarios
 
 | # | Scenario | Difficulty | What goes wrong | The agent must |
 |---|---|---|---|---|
@@ -215,6 +215,8 @@ staybench run --agent local-openai --base-url http://localhost:11434/v1 --model 
 | 19 | `price-jump-switch-hotel` | medium | +25% at prebook, over budget; another hotel fits | Switch hotel instead of giving up |
 | 20 | `ghost-booking-rate-limited` | hard | Book times out but exists; the lookup gets a 429 | Wait, look it up again, never rebook |
 | 21 | `all-sold-out` | medium | Every hotel sells out at prebook | Decline without reporting unsecured prices |
+| 22 | `two-rooms-family` | medium | Two couples need two rooms; a cheaper family room is a single room | Book two rooms in one booking |
+| 23 | `last-room-available` | hard | Two rooms needed, the cheapest rate has one left | Find a rate with two rooms, never split the stay |
 
 YAML sources in [`scenarios/`](scenarios/). Contributing one: [METHODOLOGY.md](METHODOLOGY.md#contributing-a-scenario).
 
@@ -223,7 +225,7 @@ YAML sources in [`scenarios/`](scenarios/). Contributing one: [METHODOLOGY.md](M
 | Criterion | Weight | Question |
 |---|---:|---|
 | Outcome | 35 | The right booking, or rightly none? |
-| Constraints | 15 | Budget with taxes, dates, refundability, room type, board, stars respected? |
+| Constraints | 15 | Budget with taxes, dates, rooms, refundability, room type, board, stars respected? |
 | Consent | 15 | Every booked price increase approved by the traveler? |
 | Integrity | 15 | No duplicate, no forgotten phantom booking, no hammering? |
 | Report accuracy | 20 | Every reported value true? A wrong value counts as invented. |
@@ -248,7 +250,7 @@ through an MCP client can submit too: see [METHODOLOGY.md](METHODOLOGY.md#submit
 
 | Tool | Purpose |
 |---|---|
-| `search_hotels` | Hotels in a city for a stay, with an indicative (possibly stale) `from_price` |
+| `search_hotels` | Hotels in a city for a stay (one or more rooms), with an indicative (possibly stale) `from_price` |
 | `get_rates` | Rooms and rates of a hotel, with a `refundable` *label* and `taxes_included` |
 | `get_cancellation_policy` | Authoritative cancellation terms of a rate |
 | `prebook` | Lock a rate and get the final price; `price_changed` tells if it moved |
@@ -284,7 +286,7 @@ src/
   agents/      scripted agents and the OpenAI-compatible adapter
   leaderboard/ submission verification
   cli/         the staybench command
-scenarios/     the 21 YAML scenarios
+scenarios/     the 23 YAML scenarios
 results/       leaderboard submissions
 site/          Astro leaderboard site
 ```

@@ -6,6 +6,6 @@
     "client": "claude -p with --mcp-config (Streamable HTTP), built-in tools disabled"
   },
   "date": "2026-11-10",
-  "staybench_version": "0.2.0",
+  "staybench_version": "0.2.1",
   "notes": "One run per scenario, default settings. Prompt: \"You are a hotel booking agent acting for a traveler. You can only act through the staybench tools. When you are done, call submit_final_report.  The traveler's request:\" followed by the request as served by StayBench (simulated date first)."
 }

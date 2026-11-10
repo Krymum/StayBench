@@ -31,12 +31,14 @@ const EXPECTED_REPORTS: Record<string, { total_price: number | null; currency: s
   "price-jump-switch-hotel": { total_price: 418, currency: "EUR", deadline: "2026-05-10T00:00:00.000Z" },
   "ghost-booking-rate-limited": { total_price: 688.5, currency: "USD", deadline: "2026-06-06T00:00:00.000Z" },
   "all-sold-out": { total_price: null, currency: null, deadline: null },
+  "two-rooms-family": { total_price: 636, currency: "EUR", deadline: "2026-07-01T00:00:00.000Z" },
+  "last-room-available": { total_price: 836, currency: "EUR", deadline: "2026-09-16T00:00:00.000Z" },
 };
 
 describe("scenario catalog", () => {
-  it("has 21 scenarios with unique ids, each with an expected report", () => {
-    expect(scenarios).toHaveLength(21);
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(21);
+  it("has 23 scenarios with unique ids, each with an expected report", () => {
+    expect(scenarios).toHaveLength(23);
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(23);
     expect(Object.keys(EXPECTED_REPORTS).sort()).toEqual(scenarios.map((s) => s.id).sort());
   });
 

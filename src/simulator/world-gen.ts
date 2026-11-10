@@ -111,6 +111,7 @@ export function hotelFromSpec(spec: HotelSpec): Hotel {
           nightlyNetMinor: Math.round(p.nightly_net * 100),
           refundable: p.refundable,
           freeCancelDaysBefore: p.refundable ? (p.free_cancel_days_before ?? 1) : null,
+          ...(p.available_rooms !== undefined ? { availableRooms: p.available_rooms } : {}),
         })),
       };
     }),

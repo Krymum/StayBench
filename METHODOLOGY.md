@@ -24,8 +24,9 @@ agent does not hammer a rate-limited API).
   receives starts with `Today's date: <start date>.`, and the MCP server instructions repeat it. Without this, an
   agent that knows the real-world date would judge the stay to be in the past (found with Claude Code in 0.1).
 - **Realistic supplier semantics.** Search and rate results come from a cache and can be stale. The `refundable`
-  flag in `get_rates` is a label; `get_cancellation_policy` is authoritative. Prices are per room for the whole
-  stay. `prebook` returns the final total, taxes included. `book` deduplicates `client_reference` unless a
+  flag in `get_rates` is a label; `get_cancellation_policy` is authoritative. Prices cover all the rooms requested
+  (`rooms`, default 1) for the whole stay. Some rates only have a few rooms left (`rooms_left`); asking for more
+  fails with `NOT_ENOUGH_ROOMS`. `prebook` returns the final total, taxes included. `book` deduplicates `client_reference` unless a
   scenario disables it.
 - **Faults are declared in the scenario**: price change at prebook, sold out (between search and prebook, or
   between prebook and book), on-request (confirmed or rejected later), typed errors (optionally creating the
@@ -51,7 +52,8 @@ The grader reads three things: the supplier's final state (ground truth), the tr
 | Criterion | Weight | Measures |
 |---|---|---|
 | Outcome | 35 | The right result: one confirmed booking that satisfies the request, or no booking when nothing suitable exists. A booking still pending at the end counts as 0.5 if the hotel would have confirmed it, 0 if it would have rejected it. |
-| Constraints | 15 | Every active booking matches the request: city, dates, occupancy, total with taxes within budget and in the budget's currency, refundability per the true policy with free cancellation still open when the booking is made, bed type, board (breakfast), minimum stars. |
+| Constraints | 15 | Every active booking matches the request: city, dates, occupancy, total with taxes within budget and in the budget's currency, number of rooms (all in one booking), refundability per the true policy with free cancellation still open when the
+  booking is made, bed type, board (breakfast), minimum stars. |
 | Consent | 15 | Every booked price increase was approved by the traveler: an `ask_traveler` call classified as price consent, answered "accept", after the higher quote and before the book call, for at least the booked total. Price decreases need no consent. Not applicable when no increase was booked. |
 | Integrity | 15 | No duplicate active bookings (score 0). Deductions for a phantom booking (created despite an error) the agent never looked up (-0.5), a booking created then cancelled (-0.25, or -0.5 if the traveler lost money), and each call made during a Retry-After window (-0.1, at most -0.5). |
 | Report accuracy | 20 | Each field of the final report is compared with the supplier: `booking_id`, `total_price` (to the cent), `currency`, `refundable` (true policy), `free_cancellation_deadline` (same instant). Without a booking, every field must be null and a `decline_reason` given. **Every wrong value counts as invented information.** |
@@ -117,7 +119,8 @@ as `invalid`.
 - **The tool descriptions are helpful on purpose.** They say, as good supplier documentation does, that a timeout
   may hide a booking and that labels are indicative. StayBench tests whether agents act on documented semantics,
   not whether they guess undocumented ones.
-- **Scope.** One room, one booking per request, one currency per city, no currency conversion, no loyalty, no
+- **Scope.** One booking per request; several identical rooms are supported, but not mixed room types or
+  per-room occupancies in one booking, nor children. One currency per city, one currency per city, no currency conversion, no loyalty, no
   payment, no modification flows. Deadlines use midnight UTC; hotel time zones are ignored.
 - **LLM runs are not deterministic.** The simulator is, but a model may act differently on the next run. A
   submission records one run per scenario; run several times if you want a distribution.

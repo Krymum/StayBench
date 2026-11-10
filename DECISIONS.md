@@ -182,4 +182,11 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
   refundable. No existing scenario is affected (all deadlines are in the future).
 - A patch release: the simulator's responses are unchanged, so 0.2.0 traces still replay. Existing submissions
   become `incomplete` until they add the six new scenarios.
-- **Multi-room bookings are still out of scope**: one room per booking (see METHODOLOGY limits).
+- **Multi-room bookings** (scenarios 22-23): `search_hotels` and `get_rates` take an optional `rooms` (identical
+  rooms; `adults` is per room). Prices cover all rooms. A plan may declare `available_rooms`; `get_rates` then shows
+  `rooms_left` and `prebook`/`book` fail with `NOT_ENOUGH_ROOMS` when too few are left. All rooms must be in one
+  booking: several bookings that together cover the request are reported as split, not as valid.
+- **Backward compatible on purpose**: a rate id only gets a `~<rooms>` suffix for 2+ rooms, and the new fields
+  (`rooms`, `rooms_left`, `rooms_requested`) only appear when they apply, so every earlier response is unchanged and
+  0.2.0 traces still replay. `rooms` is optional in the scenario schema (absent = 1) so existing scenario hashes do
+  not change.
