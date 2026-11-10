@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { STAYBENCH_VERSION } from "../version.js";
-import { AGENTS, cmdGrade, cmdList, cmdRun, cmdServe, defaultIo } from "./commands.js";
+import { AGENTS, cmdGrade, cmdList, cmdRun, cmdServe, cmdVerify, defaultIo } from "./commands.js";
 
 const HELP = `staybench ${STAYBENCH_VERSION} - test AI agents on hotel booking
 
@@ -22,6 +22,14 @@ Usage:
                 [--max-turns 40] [--out runs] [--json]
       Run an agent automatically. local-openai talks to any OpenAI-compatible
       endpoint, e.g. Ollama: --base-url http://localhost:11434/v1 --model qwen3:8b
+
+  staybench verify [results-dir] [--out leaderboard.json] [--json] [--allow-invalid]
+      Verify leaderboard submissions: replay every trace, check it matches the
+      current scenario version, recompute scores. Exit code 1 if any is invalid,
+      unless --allow-invalid (used to build the site: invalid entries are shown as such).
+
+  Add --submitter <github-handle> [--name "<display name>"] to "run" to write
+  the meta.json of a leaderboard submission into --out.
 
 Common options:
   --scenarios-dir <dir>   Use scenarios from another directory.
@@ -48,8 +56,11 @@ async function main(argv: string[]): Promise<number> {
       model: { type: "string" },
       "api-key": { type: "string" },
       "max-turns": { type: "string" },
-      out: { type: "string", default: "runs" },
+      out: { type: "string" },
       "scenarios-dir": { type: "string" },
+      submitter: { type: "string" },
+      name: { type: "string" },
+      "allow-invalid": { type: "boolean" },
     },
   });
   const [command, ...rest] = positionals;
@@ -103,12 +114,23 @@ async function main(argv: string[]): Promise<number> {
         ...(values.model ? { model: values.model } : {}),
         ...(values["api-key"] ? { apiKey: values["api-key"] } : {}),
         ...(values["max-turns"] ? { maxTurns: Number(values["max-turns"]) } : {}),
-        out: values.out,
+        out: values.out ?? "runs",
         json: values.json,
+        ...(values.submitter ? { submitter: values.submitter } : {}),
+        ...(values.name ? { displayName: values.name } : {}),
         ...(scenariosDir ? { scenariosDir } : {}),
       });
       return code;
     }
+
+    case "verify":
+      return cmdVerify({
+        results: rest[0] ?? "results",
+        allowInvalid: values["allow-invalid"],
+        ...(values.out ? { out: values.out } : {}),
+        json: values.json,
+        ...(scenariosDir ? { scenariosDir } : {}),
+      });
 
     default:
       defaultIo.err(`Unknown command "${command}".\n`);

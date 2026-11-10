@@ -132,3 +132,21 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
 - `temperature: 0`, at most 40 model turns, 2 nudges when the model answers without a tool call, then the run ends
   without a report (graded as such). Tool-call arguments are accepted as a JSON string or an object (Ollama).
 - The adapter talks to the session in-process (same `RunSession` as MCP), so traces are identical in format.
+
+## Leaderboard
+
+- **Submission layout**: `results/<submitter>/<name>/meta.json` plus one trace per scenario anywhere below it
+  (`staybench run --all --out results/<you>/<name> --submitter <you>` produces exactly that).
+- **Ranking score** = average over *all* current scenarios; a missing scenario counts as 0. Status: `verified`
+  (all scenarios, no error), `incomplete` (missing scenarios), `invalid` (any error: replay mismatch, altered run
+  config, outdated scenario version, duplicate trace, bad meta.json). Ranked: verified, then incomplete, then invalid.
+- **Two verification points.** The PR workflow replays every trace and refuses PRs that touch anything outside
+  `results/`. Because a PR's workflow runs the PR's own code, the authoritative check is the second one: the Pages
+  build re-verifies every submission with the code on `main` and shows failures as `invalid`.
+- **Leaderboard data is generated, not committed** (`site/src/data/leaderboard.json` is built by `pnpm site:data`).
+- **Reference submissions** of the two scripted agents are committed under `results/staybench/` so the board is not
+  empty and the replay pipeline is exercised by CI on every push.
+- **Site**: Astro, static output, no client-side JavaScript, system fonts, light/dark via `prefers-color-scheme`.
+  Base path `/StayBench` (overridable with `BASE_PATH`/`SITE_URL`; the Pages workflow passes the values from
+  `actions/configure-pages`).
+- **Outdated traces are not migrated**: a scenario version bump invalidates older traces for that scenario.

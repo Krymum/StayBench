@@ -1,2 +1,8 @@
+packages:
+  - site
 allowBuilds:
   esbuild: false
+minimumReleaseAgeExclude:
+  - '@astrojs/runtime@0.1.0'
+  - '@astrojs/vite-plugin-astro@0.1.0'
+  - astro@7.4.9

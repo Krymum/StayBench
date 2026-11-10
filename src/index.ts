@@ -22,3 +22,4 @@ export * from "./scenarios/loader.js";
 export * from "./scenarios/schema.js";
 export * from "./trace/replay.js";
 export * from "./agents/openai-compatible.js";
+export * from "./leaderboard/verify.js";

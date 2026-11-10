@@ -1,0 +1,49 @@
+name: Verify results
+
+# Runs on every pull request that adds or changes a leaderboard submission.
+# It replays each trace against the simulator, checks it matches the current
+# scenario version and recomputes the score. Submissions must only touch results/.
+on:
+  pull_request:
+    paths:
+      - "results/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Submissions may only change files under results/
+        run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          echo "$changed"
+          outside=$(echo "$changed" | grep -v '^results/' || true)
+          if [ -n "$outside" ]; then
+            echo "::error::A result submission must only change files under results/. Also changed:"
+            echo "$outside"
+            exit 1
+          fi
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Replay and re-grade every submission
+        run: |
+          set -o pipefail
+          pnpm -s staybench verify results | tee verify.txt
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## StayBench verification"
+            echo '```'
+            cat verify.txt 2>/dev/null || echo "verification did not run"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

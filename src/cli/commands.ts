@@ -1,5 +1,7 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { buildLeaderboard, submissionMetaSchema, type SubmissionMeta } from "../leaderboard/verify.js";
+import { STAYBENCH_VERSION } from "../version.js";
 import { OpenAICompatibleAgent } from "../agents/openai-compatible.js";
 import { runAgent } from "../agents/run-local.js";
 import { ScriptedBadAgent } from "../agents/scripted-bad.js";
@@ -122,6 +124,9 @@ export interface RunOptions {
   apiKey?: string;
   maxTurns?: number;
   out: string;
+  /** When set, also writes <out>/meta.json so the output directory is a leaderboard submission. */
+  submitter?: string;
+  displayName?: string;
   json?: boolean;
   scenariosDir?: string;
 }
@@ -162,10 +167,49 @@ export async function cmdRun(opts: RunOptions, io: Io = defaultIo): Promise<{ re
     results.push(g);
     if (!opts.json) io.out(explain(g));
   }
+  if (opts.submitter) {
+    const info = agent.info ?? {};
+    writeSubmissionMeta(opts.out, {
+      submitter: opts.submitter,
+      agent: {
+        name: opts.displayName ?? (typeof info.model === "string" ? info.model : agent.name),
+        ...(typeof info.model === "string" ? { model: info.model } : {}),
+        client: `staybench run --agent ${agent.name}`,
+      },
+      date: new Date().toISOString().slice(0, 10),
+      staybench_version: STAYBENCH_VERSION,
+    });
+  }
   if (opts.json) io.out(JSON.stringify(results, null, 2));
   else if (results.length > 1) {
     const avg = results.reduce((a, r) => a + r.score, 0) / results.length;
     io.out(`\nAverage: ${avg.toFixed(1)}/100, passed ${results.filter((r) => r.passed).length}/${results.length}`);
   }
   return { results, code: 0 };
+}
+
+// ---------------------------------------------------------------------------
+
+export function cmdVerify(opts: { results: string; out?: string; json?: boolean; allowInvalid?: boolean; scenariosDir?: string }, io: Io = defaultIo): number {
+  const lb = buildLeaderboard(opts.results, opts.scenariosDir);
+  if (opts.out) {
+    mkdirSync(dirname(opts.out), { recursive: true });
+    writeFileSync(opts.out, `${JSON.stringify(lb, null, 2)}\n`);
+  }
+  if (opts.json) io.out(JSON.stringify(lb, null, 2));
+  else {
+    if (lb.entries.length === 0) io.out(`No submissions found under ${opts.results}`);
+    for (const e of lb.entries) {
+      io.out(`${e.status.toUpperCase().padEnd(10)} ${e.score.toFixed(1).padStart(5)}  ${String(e.passed).padStart(2)}/${lb.scenarios.length} passed  ${e.id}  (${e.meta.agent.name})`);
+      for (const err of e.errors) io.out(`           ! ${err}`);
+    }
+    if (opts.out) io.out(`\nWrote ${opts.out}`);
+  }
+  return !opts.allowInvalid && lb.entries.some((e) => e.status === "invalid") ? 1 : 0;
+}
+
+/** Writes the meta.json of a submission directory. */
+export function writeSubmissionMeta(dir: string, meta: SubmissionMeta): void {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "meta.json"), `${JSON.stringify(submissionMetaSchema.parse(meta), null, 2)}\n`);
 }

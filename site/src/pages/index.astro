@@ -1,0 +1,134 @@
+---
+import Base from "../layouts/Base.astro";
+import { REPO_URL, band, leaderboard, resultFor, url } from "../lib";
+
+const { entries, scenarios } = leaderboard;
+const ranked = entries.filter((e) => e.status === "verified");
+const others = entries.filter((e) => e.status !== "verified");
+---
+<Base title="StayBench">
+  <section class="hero">
+    <span class="badge-verified">Self-reported · replay-verified</span>
+    <h1>How well do AI agents book hotels when the supplier misbehaves?</h1>
+    <p class="lede">
+      StayBench plugs an agent into a simulated hotel supplier over MCP and plays {scenarios.length} scenarios
+      taken from real distribution failures: price changes at prebook, sell-outs, on-request bookings, timeouts
+      that still create a booking, rate limits, mislabelled refundability, taxes left out of the price.
+      Scores are computed deterministically from the supplier's final state. No LLM judge.
+    </p>
+  </section>
+
+  <h2>Leaderboard</h2>
+  <div class="card scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Agent</th><th>Submitter</th><th class="r">Score</th><th class="r">Passed</th><th>Date</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ranked.map((e, i) => (
+          <tr>
+            <td class="num muted">{i + 1}</td>
+            <td>
+              <a href={url(`runs/${e.id}/`)}><strong>{e.meta.agent.name}</strong></a>
+              {e.meta.agent.model && <div class="muted small">{e.meta.agent.model}</div>}
+            </td>
+            <td class="muted">{e.meta.submitter}</td>
+            <td class="r">
+              <span class:list={["score", `b-${band(e.score)}`]}>
+                <span class="bar" style={`--w:${e.score}%`}></span>
+                <span class="num">{e.score.toFixed(1)}</span>
+              </span>
+            </td>
+            <td class="r num">{e.passed}/{scenarios.length}</td>
+            <td class="num muted">{e.meta.date}</td>
+            <td><span class="pill verified">verified</span></td>
+          </tr>
+        ))}
+        {others.map((e) => (
+          <tr class="dim">
+            <td class="num muted">–</td>
+            <td><a href={url(`runs/${e.id}/`)}>{e.meta.agent.name}</a></td>
+            <td class="muted">{e.meta.submitter}</td>
+            <td class="r num">{e.score.toFixed(1)}</td>
+            <td class="r num">{e.passed}/{scenarios.length}</td>
+            <td class="num muted">{e.meta.date}</td>
+            <td><span class:list={["pill", e.status]}>{e.status}</span></td>
+          </tr>
+        ))}
+        {entries.length === 0 && (
+          <tr><td colspan="7" class="muted">No submissions yet.</td></tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Per scenario</h2>
+  <p class="muted small">Score of each agent on each scenario. Hover a cell for the value; open an agent for the grader's explanations.</p>
+  <div class="card scroll">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Scenario</th>
+          {entries.map((e) => <th class="col"><a href={url(`runs/${e.id}/`)} title={e.meta.agent.name}>{e.meta.agent.name}</a></th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {scenarios.map((s) => (
+          <tr>
+            <td><a href={url(`scenarios/#${s.id}`)}>{s.title}</a> <span class="pill">{s.difficulty}</span></td>
+            {entries.map((e) => {
+              const r = resultFor(e, s.id);
+              return (
+                <td class="cell">
+                  <span class:list={["chip", `b-${band(r?.score)}`]} title={r ? `${r.score}/100` : "not submitted"}>
+                    {r ? Math.round(r.score) : "–"}
+                  </span>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Submit a result</h2>
+  <div class="card how">
+    <ol>
+      <li>Run every scenario with your agent (any MCP client, or <code>staybench run</code> for a local model).</li>
+      <li>Put the traces and a <code>meta.json</code> in <code>results/&lt;you&gt;/&lt;agent&gt;/</code>.</li>
+      <li>Open a pull request. CI replays each trace against the simulator and recomputes the score.</li>
+    </ol>
+    <p><a href={`${REPO_URL}/blob/main/METHODOLOGY.md#submitting-a-result`}>Full instructions</a></p>
+  </div>
+</Base>
+
+<style>
+  .hero { max-width: 820px; margin-bottom: 8px; }
+  .hero .badge-verified { margin-bottom: 16px; }
+  .r { text-align: right; }
+  .small { font-size: 13px; }
+  .dim td { opacity: 0.75; }
+  .score { display: inline-flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .score .bar {
+    width: 80px; height: 6px; border-radius: 3px; background: var(--none); position: relative; overflow: hidden;
+  }
+  .score .bar::after {
+    content: ""; position: absolute; inset: 0; width: var(--w); background: var(--c); border-radius: 3px;
+  }
+  .score .num { font-weight: 700; min-width: 3.5ch; text-align: right; }
+  .matrix th.col { text-align: center; max-width: 140px; white-space: normal; text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .matrix th.col a { color: var(--ink); text-decoration: none; }
+  .matrix td.cell { text-align: center; }
+  .chip {
+    display: inline-grid; place-items: center; min-width: 40px; height: 26px; padding: 0 6px; border-radius: 6px;
+    font: 600 13px/1 var(--mono); color: var(--surface); background: var(--c);
+  }
+  .chip.b-none { color: var(--muted); }
+  .how { padding: 16px 20px; }
+  .how ol { margin: 0 0 12px; padding-left: 20px; }
+  .how li { margin-bottom: 6px; }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+</style>

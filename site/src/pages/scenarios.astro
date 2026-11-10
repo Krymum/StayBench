@@ -1,0 +1,56 @@
+---
+import Base from "../layouts/Base.astro";
+import { REPO_URL, leaderboard } from "../lib";
+
+const { scenarios } = leaderboard;
+const FAULTS: Record<string, string> = {
+  price_change: "price change at prebook",
+  sold_out: "sold out",
+  on_request: "on-request booking",
+  error: "typed error",
+  duplicate_reference: "no idempotency",
+  rate_limit: "rate limit (429)",
+  mislabeled_refundable: "mislabelled refundability",
+  taxes_excluded: "taxes excluded",
+};
+---
+<Base title="Scenarios" description="The StayBench scenario catalog: realistic hotel supplier failures an AI booking agent must handle.">
+  <h1>Scenarios</h1>
+  <p class="lede">
+    {scenarios.length} versioned scenarios. Each one gives the agent a traveler's request, a seeded supplier world
+    and injected faults. The <a href={`${REPO_URL}/tree/main/scenarios`}>YAML sources</a> are the reference.
+  </p>
+  <div class="grid">
+    {scenarios.map((s, i) => (
+      <article class="card sc" id={s.id}>
+        <header>
+          <span class="num muted">{String(i + 1).padStart(2, "0")}</span>
+          <span class="pill">{s.difficulty}</span>
+          <span class="pill">v{s.version}</span>
+        </header>
+        <h3>{s.title}</h3>
+        <p class="muted id">{s.id}</p>
+        <p>{s.description}</p>
+        <p class="rationale"><strong>Expected:</strong> {s.rationale}</p>
+        <footer>
+          {s.faults.map((f) => <span class="pill fault">{FAULTS[f] ?? f}</span>)}
+          {s.focus.map((f) => <span class="pill">{f.replace("_", " ")}</span>)}
+        </footer>
+      </article>
+    ))}
+  </div>
+</Base>
+
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-top: 24px; }
+  @media (max-width: 380px) { .grid { grid-template-columns: 1fr; } }
+  .sc { padding: 16px 18px; display: flex; flex-direction: column; scroll-margin-top: 16px; }
+  .sc:target { outline: 2px solid var(--accent); }
+  .sc header { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .sc header .num { margin-right: auto; font-size: 13px; }
+  .sc .id { font-family: var(--mono); font-size: 12px; margin-bottom: 8px; }
+  .sc p { font-size: 14px; }
+  .rationale { background: var(--bg); border-radius: 6px; padding: 8px 10px; }
+  .sc footer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
+  .fault { border-color: var(--mid); color: var(--mid); }
+</style>

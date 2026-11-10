@@ -1,0 +1,9 @@
+{
+  "submitter": "staybench",
+  "agent": {
+    "name": "scripted-bad (reference, no LLM)",
+    "client": "staybench run --agent scripted-bad"
+  },
+  "date": "2026-11-10",
+  "staybench_version": "0.1.0"
+}

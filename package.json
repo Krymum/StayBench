@@ -13,7 +13,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "staybench": "tsx src/cli/index.ts"
+    "staybench": "tsx src/cli/index.ts",
+    "site:data": "tsx src/cli/index.ts verify results --allow-invalid --out site/src/data/leaderboard.json",
+    "site:build": "pnpm site:data && pnpm --filter staybench-site build",
+    "site:dev": "pnpm site:data && pnpm --filter staybench-site dev"
   },
   "keywords": [
     "mcp",

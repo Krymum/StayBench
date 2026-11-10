@@ -1,0 +1,134 @@
+---
+import { REPO_URL, leaderboard, url } from "../lib";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = "Open-source sandbox to test AI agents on hotel booking, with injected supplier faults and deterministic grading." } = Astro.props;
+const path = Astro.url.pathname.replace(/\/+$/, "");
+const nav = [
+  { href: url(""), label: "Leaderboard", active: path === url("").replace(/\/+$/, "") || path.includes("/runs/") },
+  { href: url("scenarios/"), label: "Scenarios", active: path.endsWith("/scenarios") },
+  { href: `${REPO_URL}/blob/main/METHODOLOGY.md`, label: "Methodology", active: false },
+  { href: REPO_URL, label: "GitHub", active: false },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title === "StayBench" ? "StayBench" : `${title} · StayBench`}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={url("favicon.svg")} type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap top-inner">
+        <a class="brand" href={url("")}>
+          <span class="brand-mark" aria-hidden="true">SB</span>
+          <span>StayBench</span>
+        </a>
+        <nav aria-label="Main">
+          {nav.map((n) => <a href={n.href} class:list={[{ active: n.active }]}>{n.label}</a>)}
+        </nav>
+      </div>
+    </header>
+    <main class="wrap">
+      <slot />
+    </main>
+    <footer class="wrap foot">
+      <p>
+        StayBench v{leaderboard.staybench_version} · MIT · Results are <strong>self-reported, replay-verified</strong>:
+        every trace is replayed against the simulator and re-graded by CI.
+      </p>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #f6f4ef;
+    --surface: #fffdf8;
+    --ink: #1d1b18;
+    --muted: #6b665d;
+    --line: #e2ddd2;
+    --accent: #0f5f5a;
+    --accent-soft: #dcebe8;
+    --full: #0f5f5a;
+    --high: #4c8c5a;
+    --mid: #c08a2e;
+    --low: #b0473a;
+    --none: #d9d4c9;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141412;
+      --surface: #1c1c19;
+      --ink: #ece8df;
+      --muted: #a39d91;
+      --line: #2e2d29;
+      --accent: #5fc2b6;
+      --accent-soft: #1d3633;
+      --full: #4fb3a6;
+      --high: #6faa79;
+      --mid: #d5a34a;
+      --low: #d46a5b;
+      --none: #3a3934;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 var(--sans);
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  .top { border-bottom: 1px solid var(--line); background: var(--surface); }
+  .top-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
+  .brand-mark {
+    display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 7px;
+    background: var(--accent); color: var(--surface); font: 700 12px/1 var(--mono);
+  }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav a { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+  nav a:hover { color: var(--ink); background: var(--bg); }
+  nav a.active { color: var(--ink); background: var(--accent-soft); }
+  main { padding-top: 40px; padding-bottom: 40px; }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 12px; }
+  h2 { font-size: 20px; margin: 40px 0 12px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; }
+  .lede { color: var(--muted); max-width: 70ch; font-size: 17px; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .pill {
+    display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; line-height: 20px;
+    border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap;
+  }
+  .pill.verified { border-color: var(--accent); color: var(--accent); }
+  .pill.invalid { border-color: var(--low); color: var(--low); }
+  .pill.incomplete { border-color: var(--mid); color: var(--mid); }
+  .badge-verified {
+    display: inline-flex; gap: 6px; align-items: center; font: 600 12px/1 var(--mono); letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 6px 10px; border-radius: 6px;
+  }
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  .foot { color: var(--muted); font-size: 13px; padding-bottom: 40px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .b-full { --c: var(--full); } .b-high { --c: var(--high); } .b-mid { --c: var(--mid); }
+  .b-low { --c: var(--low); } .b-none { --c: var(--none); }
+</style>

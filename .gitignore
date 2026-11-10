@@ -5,3 +5,5 @@ runs/
 .astro/
 site/dist/
 *.log
+site/src/data/leaderboard.json
+site/.astro/
