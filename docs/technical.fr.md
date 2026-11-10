@@ -246,7 +246,7 @@ du JSON canonique du scénario analysé (clés triées), indépendant de la mise
 JSONL, un objet par ligne : un `header`, un `call` par appel d'outil, et une ligne `end`.
 
 ```jsonc
-{"type":"header","format":1,"staybench_version":"0.1.0",
+{"type":"header","format":1,"staybench_version":"0.2.0",
  "run":{"scenario_id":"price-increase-within-budget","scenario_version":1,"scenario_hash":"431c…",
         "start_time":"2026-02-01T09:00:00Z","tick_s":2,"world":{…},"faults":[…],"traveler":{…}},
  "agent":{"name":"scripted-bad"}}
@@ -325,7 +325,8 @@ Chemin de trace par défaut : `runs/<scénario>/<agent>-<horodatage UTC>.jsonl`.
 
 - Une soumission est `results/<soumetteur>/<nom>/meta.json` plus une trace par scénario, n'importe où en dessous.
 - `verifySubmission` valide `meta.json` (`submissionMetaSchema`) puis, pour chaque trace : scénario connu, version
-  courante, une seule trace par scénario, `gradeTrace` sans écart.
+  courante du scénario, même version majeure.mineure de StayBench que le vérificateur, une seule trace par scénario,
+  `gradeTrace` sans écart.
 - Statut : `verified` (complète, sans erreur), `incomplete` (scénarios manquants, comptés 0), `invalid` (au moins
   une erreur).
 - `buildLeaderboard` ajoute le catalogue des scénarios et trie les entrées ; `pnpm site:data` l'écrit dans
@@ -352,7 +353,7 @@ Chemin de trace par défaut : `runs/<scénario>/<agent>-<horodatage UTC>.jsonl`.
 | `tests/scenarios` | Pour chaque scénario : bon agent à 100 avec rapport attendu figé, mauvais agent en échec sur ses critères ciblés, déterminisme et rejeu |
 | `tests/e2e` | Agent scripté → MCP Streamable HTTP → trace → rejeu → note sur tous les scénarios ; vrai binaire CLI en stdio et en HTTP |
 
-`pnpm test` lance tout (179 tests, quelques secondes).
+`pnpm test` lance tout (182 tests, quelques secondes).
 
 ## 13. Étendre StayBench
 

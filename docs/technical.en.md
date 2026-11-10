@@ -241,7 +241,7 @@ canonical JSON of the parsed scenario (sorted keys), independent of formatting a
 JSONL, one object per line: a `header`, one `call` per tool call, and an `end` line.
 
 ```jsonc
-{"type":"header","format":1,"staybench_version":"0.1.0",
+{"type":"header","format":1,"staybench_version":"0.2.0",
  "run":{"scenario_id":"price-increase-within-budget","scenario_version":1,"scenario_hash":"431c…",
         "start_time":"2026-02-01T09:00:00Z","tick_s":2,"world":{…},"faults":[…],"traveler":{…}},
  "agent":{"name":"scripted-bad"}}
@@ -317,7 +317,8 @@ Default trace path: `runs/<scenario>/<agent>-<UTC timestamp>.jsonl`.
 
 - A submission is `results/<submitter>/<name>/meta.json` plus one trace per scenario anywhere below it.
 - `verifySubmission` validates `meta.json` (`submissionMetaSchema`), then for each trace: known scenario, current
-  version, single trace per scenario, `gradeTrace` without mismatch.
+  scenario version, same StayBench major.minor as the verifier, single trace per scenario, `gradeTrace` without
+  mismatch.
 - Status: `verified` (complete, no error), `incomplete` (missing scenarios, counted as 0), `invalid` (any error).
 - `buildLeaderboard` adds the scenario catalog and sorts entries; `pnpm site:data` writes it to
   `site/src/data/leaderboard.json` (generated, not committed); Astro renders it.
@@ -343,7 +344,7 @@ Default trace path: `runs/<scenario>/<agent>-<UTC timestamp>.jsonl`.
 | `tests/scenarios` | For each scenario: good agent 100 with pinned report, bad agent fails its focus criteria, determinism and replay |
 | `tests/e2e` | Scripted agent → MCP Streamable HTTP → trace → replay → grade on all scenarios; real CLI binary over stdio and HTTP |
 
-`pnpm test` runs everything (179 tests, a few seconds).
+`pnpm test` runs everything (182 tests, a few seconds).
 
 ## 13. Extending StayBench
 

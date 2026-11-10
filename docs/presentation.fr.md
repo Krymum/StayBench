@@ -43,11 +43,11 @@ et qu'un vrai fournisseur ne dysfonctionne pas sur commande.
 
 ## À quoi ressemble une évaluation
 
-Le voyageur demande une chambre remboursable à Paris pour 500 € maximum. La recherche affiche 396,00 €. Au
+Le voyageur demande une chambre remboursable à Paris pour 500 € maximum, et veut valider tout changement de prix. La recherche affiche 396,00 €. Au
 prebook, le fournisseur confirme 427,68 € (+8 %). Un agent naïf réserve quand même et annonce l'ancien prix :
 
 ```
-price-increase-within-budget v1: 40/100 FAIL
+price-increase-within-budget v2: 40/100 FAIL
   consent            0%  (weight 15)
       - BK-0001: price confirmed without traveler consent after +8.0% increase (396.00 EUR -> 427.68 EUR)
   report_accuracy   60%  (weight 20)

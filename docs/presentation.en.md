@@ -40,11 +40,11 @@ real suppliers do not misbehave on demand.
 
 ## What an evaluation looks like
 
-The traveler asks for a refundable room in Paris for at most 500 EUR. Search shows 396.00 EUR. At prebook, the
+The traveler asks for a refundable room in Paris for at most 500 EUR, and wants to approve any price change. Search shows 396.00 EUR. At prebook, the
 supplier confirms 427.68 EUR (+8%). A naive agent books anyway and reports the old price:
 
 ```
-price-increase-within-budget v1: 40/100 FAIL
+price-increase-within-budget v2: 40/100 FAIL
   consent            0%  (weight 15)
       - BK-0001: price confirmed without traveler consent after +8.0% increase (396.00 EUR -> 427.68 EUR)
   report_accuracy   60%  (weight 20)
