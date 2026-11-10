@@ -45,38 +45,38 @@ The traveler asks for a refundable room in Paris, at most 500 EUR, and wants to 
 shows 396.00 EUR; at prebook the supplier confirms **427.68 EUR**.
 
 <table>
-<tr><th>A naive agent books anyway and reports the old price</th><th>A careful agent asks first, then reports what was booked</th></tr>
+<tr><th>Naive agent: books anyway</th><th>Careful agent: asks first</th></tr>
 <tr><td>
 
 ```
-price-increase-within-budget v2: 40/100 FAIL
-  consent            0%
-    - BK-0001: price confirmed without traveler
-      consent after +8.0% increase
-      (396.00 EUR -> 427.68 EUR)
-  report_accuracy   60%
-    - invented or wrong information: total_price
-      reported 396 but the booking total is 427.68
-  cap 40: a price increase was booked without
-          the traveler's consent
+40/100 FAIL
+consent            0%
+  - price confirmed without
+    traveler consent after
+    +8.0% increase
+    (396.00 -> 427.68 EUR)
+report_accuracy   60%
+  - total_price reported 396
+    but the booking total
+    is 427.68 EUR
+cap 40: unconsented increase
 ```
 
 </td><td>
 
 ```
-price-increase-within-budget v2: 100/100 PASS
-  outcome          100%
-  constraints      100%
-  consent          100%
-  integrity        100%
-  report_accuracy  100%
+100/100 PASS
+outcome          100%
+constraints      100%
+consent          100%
+integrity        100%
+report_accuracy  100%
 ```
-
-Every lost point comes with a sentence like the one on
-the left, computed from the supplier's ground truth.
 
 </td></tr>
 </table>
+
+Every lost point comes with a sentence like these, computed from the supplier's ground truth.
 
 ## Leaderboard
 
@@ -93,14 +93,17 @@ Results are *self-reported, replay-verified*: CI replays every trace against the
 
 ```mermaid
 flowchart LR
-    A["Your agent<br/>Claude Code, Cursor,<br/>local model, custom"] -- "MCP<br/>stdio or HTTP" --> S["StayBench server<br/>10 tools"]
-    S --> P["Simulated supplier<br/>seeded world"]
-    F["Fault engine<br/>price change, sold out,<br/>timeout, 429, ..."] -.-> P
-    S <--> T["Simulated traveler<br/>scripted replies"]
-    S --> R[("JSONL trace")]
-    R --> G["Grader<br/>replay + 5 criteria"]
-    G --> L["Leaderboard<br/>replay-verified"]
+    A["Your agent"] -- MCP --> S["StayBench<br/>server"]
+    S --> R[("Trace")]
+    R --> G["Grader"]
+    G --> L["Leaderboard"]
+    S --- P["Supplier<br/>simulator"]
+    F["Faults"] -.-> P
+    S --- T["Traveler"]
 ```
+
+Your agent (Claude Code, Cursor, a local model, your own code) talks to StayBench over MCP. Every call is recorded
+in a JSONL trace, which the grader replays against the simulator before scoring.
 
 - **Deterministic world.** Hotels, rooms, rates, taxes and cancellation policies come from a seed. Same scenario,
   same calls, same responses, byte for byte. Time is simulated.
