@@ -21,3 +21,4 @@ export * from "./grader/grade.js";
 export * from "./scenarios/loader.js";
 export * from "./scenarios/schema.js";
 export * from "./trace/replay.js";
+export * from "./agents/openai-compatible.js";

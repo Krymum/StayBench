@@ -20,6 +20,8 @@ export interface SessionOptions {
   tracePath?: string;
   /** Free-form agent info stored in the trace header. */
   agent?: Record<string, unknown>;
+  /** Called once when the run ends (report submitted or close()). */
+  onEnd?: (session: RunSession) => void;
 }
 
 function toOutcome(r: Result<unknown>): ToolOutcome {
@@ -38,6 +40,7 @@ export class RunSession {
   readonly header: TraceHeader;
   readonly calls: TraceCall[] = [];
   private endLine: TraceEnd | null = null;
+  private readonly onEnd?: (session: RunSession) => void;
   private readonly writer?: TraceWriter;
   private latestPrebook: TravelerContext["latestPrebook"];
 
@@ -48,6 +51,7 @@ export class RunSession {
     this.clock = new VirtualClock(run.start_time);
     this.provider = new HotelProvider({ world: generateWorld(run.world), faults: run.faults, clock: this.clock });
     this.traveler = new Traveler(run.traveler);
+    this.onEnd = opts.onEnd;
     this.header = {
       type: "header",
       format: TRACE_FORMAT_VERSION,
@@ -124,6 +128,7 @@ export class RunSession {
     if (this.endLine) return;
     this.endLine = { type: "end", t: this.clock.nowIso(), report };
     this.writer?.write(this.endLine);
+    this.onEnd?.(this);
   }
 
   private dispatch(tool: ToolName, args: any): { outcome: ToolOutcome; meta: Record<string, unknown> } {

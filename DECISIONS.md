@@ -108,3 +108,27 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
   language. LLM agents only get the text. The good agent is generic (no per-scenario branches) and doubles as a
   reference implementation of supplier best practices.
 - The good agent recognises the traveler's approval with a simple affirmative pattern ("yes", "ok", "oui"...).
+
+## CLI
+
+- **`node:util` parseArgs**, no CLI framework dependency.
+- **Traces** default to `runs/<scenario>/<agent>-<UTC timestamp>.jsonl` (git-ignored). Wall-clock time only appears in
+  the file name, never inside the trace, so traces stay reproducible.
+- **`serve` logs to stderr** (stdout is the MCP channel in stdio mode). It prints the traveler's request, the
+  endpoint, and the grade as soon as the final report is submitted. The trace end line is written on exit even if
+  the agent never reports.
+- **`grade` exit codes**: 0 graded, 2 trace inconsistent with the simulator, 1 error.
+- **`run`** accepts `local-openai`, `scripted-good` and `scripted-bad`. Scripted agents make `run` a zero-setup demo.
+- **esbuild's install script is denied** (`allowBuilds: esbuild: false` in pnpm-workspace.yaml): tsx works without it,
+  and pnpm 12 refuses to install while the choice is pending.
+
+## Local model adapter
+
+- **Generic OpenAI-compatible Chat Completions client** (`POST {base-url}/chat/completions` with `tools`), so it works
+  with Ollama, llama.cpp server, LM Studio or vLLM. There is no default URL and no provider SDK: the project never
+  calls a paid API by itself.
+- Tool definitions are generated from the same Zod schemas as the MCP server (`z.toJSONSchema`), so the two cannot
+  drift.
+- `temperature: 0`, at most 40 model turns, 2 nudges when the model answers without a tool call, then the run ends
+  without a report (graded as such). Tool-call arguments are accepted as a JSON string or an object (Ollama).
+- The adapter talks to the session in-process (same `RunSession` as MCP), so traces are identical in format.
