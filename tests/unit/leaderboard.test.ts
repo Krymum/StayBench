@@ -5,6 +5,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { cmdRun, cmdVerify, type Io } from "../../src/cli/commands.js";
 import { buildLeaderboard, sameMinor } from "../../src/leaderboard/verify.js";
 import { STAYBENCH_VERSION } from "../../src/version.js";
+import { loadScenarios } from "../../src/scenarios/loader.js";
+
+const N = loadScenarios().length;
 
 const quiet: Io = { out: () => {}, err: () => {} };
 let root: string;
@@ -33,9 +36,9 @@ describe("leaderboard verification", () => {
     const meta = JSON.parse(readFileSync(join(good, "meta.json"), "utf8"));
     expect(meta).toMatchObject({ submitter: "alice", agent: { name: "Good agent" }, staybench_version: STAYBENCH_VERSION });
     const lb = buildLeaderboard(join(root, "alice"));
-    expect(lb.scenarios).toHaveLength(15);
+    expect(lb.scenarios).toHaveLength(N);
     expect(lb.entries).toHaveLength(1);
-    expect(lb.entries[0]).toMatchObject({ id: "good", status: "verified", score: 100, passed: 15, coverage: 15, errors: [] });
+    expect(lb.entries[0]).toMatchObject({ id: "good", status: "verified", score: 100, passed: N, coverage: N, errors: [] });
   });
 
   it("flags tampered traces, duplicates and missing meta; counts missing scenarios as 0", () => {
@@ -60,9 +63,9 @@ describe("leaderboard verification", () => {
 
     const lb = buildLeaderboard(join(root, "bob"));
     const byId = Object.fromEntries(lb.entries.map((e) => [e.id, e]));
-    expect(byId["tampered"]).toMatchObject({ status: "invalid", coverage: 14 });
+    expect(byId["tampered"]).toMatchObject({ status: "invalid", coverage: N - 1 });
     expect(byId["tampered"]!.errors[0]).toMatch(/happy-path\/.*: replay mismatch at call \d+ \(get_rates, result\)/);
-    expect(byId["partial"]).toMatchObject({ status: "incomplete", coverage: 10, score: 66.7 });
+    expect(byId["partial"]).toMatchObject({ status: "incomplete", coverage: N - 5, score: Math.round(((N - 5) / N) * 1000) / 10 });
     expect(byId["dup"]!.errors[0]).toMatch(/more than one trace/);
     expect(byId["nometa/x"]!.errors).toContain("meta.json is not valid JSON");
     // Ranking: verified first, then incomplete, then invalid.

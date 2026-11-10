@@ -213,6 +213,7 @@ traveler:
     refundable_required: true                   # default false
     bed_type: twin                              # optional
     min_stars: 4                                # optional
+    board: breakfast                            # optional: room_only | breakfast
   replies:
     - intent: price_consent
       match: ["$price"]
@@ -344,7 +345,7 @@ Default trace path: `runs/<scenario>/<agent>-<UTC timestamp>.jsonl`.
 | `tests/scenarios` | For each scenario: good agent 100 with pinned report, bad agent fails its focus criteria, determinism and replay |
 | `tests/e2e` | Scripted agent → MCP Streamable HTTP → trace → replay → grade on all scenarios; real CLI binary over stdio and HTTP |
 
-`pnpm test` runs everything (182 tests, a few seconds).
+`pnpm test` runs everything (206 tests, a few seconds).
 
 ## 13. Extending StayBench
 

@@ -54,16 +54,16 @@ price-increase-within-budget v2: 40/100 FAIL
 
 A careful agent notices `price_changed`, asks the traveler, gets a yes, books, and reports 427.68 EUR: 100/100.
 
-## The 15 scenarios
+## The 21 scenarios
 
 | Family | Scenarios |
 |---|---|
-| Price | +8% within budget (ask first), +18% over budget (decline), -6% (report the real price), re-quote after an expired prebook (ask again) |
-| Availability | Sold out before prebook, sold out between prebook and book |
+| Price | +8% within budget (ask first), +18% over budget (decline), -6% (report the real price), re-quote after an expired prebook (ask again), +25% over budget with another hotel available (switch) |
+| Availability | Sold out before prebook, sold out between prebook and book, everything sold out (decline) |
 | Asynchronous | On-request booking confirmed later, on-request booking rejected later |
-| Reliability | Timeout that still creates the booking, ambiguous error then duplicate reference, rate limit with Retry-After |
-| Content | Non-refundable rate labelled refundable, taxes excluded from the displayed price, two near-identical room names |
-| Baseline | A plain refundable booking where the cheapest rate is the wrong one |
+| Reliability | Timeout that still creates the booking, ambiguous error then duplicate reference, rate limit with Retry-After, ghost booking whose lookup is rate-limited |
+| Content | Non-refundable rate labelled refundable, taxes excluded from the displayed price, two near-identical room names, breakfast required, minimum star rating |
+| Cancellation | A plain refundable booking where the cheapest rate is the wrong one; a last-minute stay whose "refundable" rate can no longer be cancelled for free |
 
 ## What is measured
 

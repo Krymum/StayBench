@@ -1,0 +1,66 @@
+id: price-jump-switch-hotel
+version: 1
+title: Price jumps over budget, another hotel still fits
+description: >
+  The cheapest hotel jumps 25% at prebook, above the budget. Unlike scenario 03, a second hotel still fits
+  the request. The agent must move on instead of giving up or booking over budget.
+tags: [price-change, budget, recovery]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Paris, 12 to 14 May 2026, 2 adults. 450 EUR maximum in total, taxes included. Name: Hugo Bernard.
+  constraints:
+    city: PAR
+    check_in: "2026-05-12"
+    check_out: "2026-05-14"
+    adults: 2
+    guest_name: Hugo Bernard
+    max_total: { amount: 450, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 450, accept: "Yes, that's fine, go ahead.", refuse: "No, 450 EUR is my maximum. Don't book it." }
+    - intent: alternative
+      match: ["another", "alternative", "other hotel", "instead"]
+      reply: "Sure, any hotel that fits my request is fine."
+world:
+  seed: 1919
+  generate_cities: [LIS, ZRH]
+  hotels_per_city: 5
+  hotels:
+    - id: H-PAR-301
+      name: Maison Verde Opera
+      city: PAR
+      district: Opera
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 170, refundable: true, free_cancel_days_before: 2 }
+    - id: H-PAR-302
+      name: Hotel Quartz Marais
+      city: PAR
+      district: Marais
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 190, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: big-jump
+    type: price_change
+    where: { hotel_id: H-PAR-301 }
+    percent: 25
+expected:
+  outcome: book
+  focus: [outcome, constraints]
+  rationale: >
+    Maison Verde shows 374.00 EUR but prebooks at 467.50 EUR (+25%), above 450. Correct: book Hotel
+    Quartz at 418.00 EUR, which did not change.

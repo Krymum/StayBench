@@ -3,7 +3,7 @@ import type { Agent, AgentInput, ToolCaller } from "./types.js";
 
 /* Minimal views of tool payloads used by the scripted agents. */
 export interface HotelHit { hotel_id: string; stars: number; from_price: number }
-export interface RateHit { rate_id: string; total_price: number; taxes_included: boolean; refundable: boolean }
+export interface RateHit { rate_id: string; board: string; total_price: number; taxes_included: boolean; refundable: boolean }
 export interface RoomHit { room_id: string; name: string; bed_type: string; rates: RateHit[] }
 export interface Prebook { prebook_id: string; total_price: number; currency: string; price_changed: boolean; previous_price?: number }
 export interface Booking {
@@ -17,7 +17,9 @@ const AFFIRMATIVE = /^(yes|yeah|ok|okay|sure|fine|go ahead|oui|d'accord|ok\b)/i;
  * Reference agent that follows supplier best practices. It is generic (no per-scenario
  * logic): it reads the structured constraints and reacts to what the supplier returns.
  *  - honours Retry-After with wait()
- *  - checks the authoritative cancellation policy, never the label
+ *  - checks the authoritative cancellation policy, never the label, and that free
+ *    cancellation is still possible
+ *  - respects room type, board and minimum stars
  *  - compares the prebook total (taxes included) with the budget
  *  - asks the traveler before accepting a price increase
  *  - after an ambiguous error, looks the booking up by client_reference before retrying
@@ -26,7 +28,7 @@ const AFFIRMATIVE = /^(yes|yeah|ok|okay|sure|fine|go ahead|oui|d'accord|ok\b)/i;
 export class ScriptedGoodAgent implements Agent {
   readonly name = "scripted-good";
 
-  async run(rawCall: ToolCaller, { constraints: c }: AgentInput): Promise<void> {
+  async run(rawCall: ToolCaller, { constraints: c, today }: AgentInput): Promise<void> {
     const call = async (tool: string, args: Record<string, unknown>): Promise<ToolOutcome> => {
       for (let attempt = 0; ; attempt++) {
         const r = await rawCall(tool, args);
@@ -61,9 +63,13 @@ export class ScriptedGoodAgent implements Agent {
       for (const room of (rates.data as { rooms: RoomHit[] }).rooms) {
         if (c.bed_type && room.bed_type !== c.bed_type) continue;
         for (const rate of room.rates) {
+          if (c.board && rate.board !== c.board) continue;
           if (c.refundable_required) {
             const pol = await call("get_cancellation_policy", { rate_id: rate.rate_id });
-            if (!pol.ok || !(pol.data as { refundable: boolean }).refundable) continue;
+            if (!pol.ok) continue;
+            const p = pol.data as { refundable: boolean; free_cancellation_until: string | null };
+            // Refundable only counts if free cancellation is still possible after today.
+            if (!p.refundable || !p.free_cancellation_until || p.free_cancellation_until <= `${today}T23:59:59.999Z`) continue;
           }
           candidates.push({ rate_id: rate.rate_id, displayed: rate.total_price });
         }

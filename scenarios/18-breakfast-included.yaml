@@ -1,0 +1,65 @@
+id: breakfast-included
+version: 1
+title: Breakfast must be included
+description: >
+  The same room is sold room-only and with breakfast. The room-only rate is cheaper and listed first.
+  The traveler asked for breakfast.
+tags: [constraints, board, content-mapping]
+difficulty: easy
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Rome, 4 to 6 May 2026, 2 adults. Breakfast must be included, we start early. Maximum 420 EUR in
+    total with taxes. Name: Chiara Conti.
+  constraints:
+    city: ROM
+    check_in: "2026-05-04"
+    check_out: "2026-05-06"
+    adults: 2
+    guest_name: Chiara Conti
+    max_total: { amount: 420, currency: EUR }
+    board: breakfast
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 420, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+    - intent: board
+      match: ["breakfast", "room only", "meal", "petit-dejeuner", "petit dejeuner"]
+      reply: "Breakfast has to be included."
+world:
+  seed: 1818
+  generate_cities: [BCN, NYC]
+  hotels_per_city: 5
+  hotels:
+    - id: H-ROM-301
+      name: Hotel Verde Monti
+      city: ROM
+      district: Monti
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, board: room_only, nightly_net: 150, refundable: true, free_cancel_days_before: 1 }
+            - { code: BB, board: breakfast, nightly_net: 180, refundable: true, free_cancel_days_before: 1 }
+    - id: H-ROM-302
+      name: Residence Harbor Prati
+      city: ROM
+      district: Prati
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: BB, board: breakfast, nightly_net: 200, refundable: true, free_cancel_days_before: 1 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints, outcome]
+  rationale: >
+    Hotel Verde's room-only rate (330.00 EUR) is cheapest but has no breakfast; Residence Harbor
+    (440.00 EUR) is over budget. Correct: book Hotel Verde's breakfast rate at 396.00 EUR.

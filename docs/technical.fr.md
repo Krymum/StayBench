@@ -218,6 +218,7 @@ traveler:
     refundable_required: true                   # false par défaut
     bed_type: twin                              # optionnel
     min_stars: 4                                # optionnel
+    board: breakfast                            # optionnel : room_only | breakfast
   replies:
     - intent: price_consent
       match: ["$price"]
@@ -353,7 +354,7 @@ Chemin de trace par défaut : `runs/<scénario>/<agent>-<horodatage UTC>.jsonl`.
 | `tests/scenarios` | Pour chaque scénario : bon agent à 100 avec rapport attendu figé, mauvais agent en échec sur ses critères ciblés, déterminisme et rejeu |
 | `tests/e2e` | Agent scripté → MCP Streamable HTTP → trace → rejeu → note sur tous les scénarios ; vrai binaire CLI en stdio et en HTTP |
 
-`pnpm test` lance tout (182 tests, quelques secondes).
+`pnpm test` lance tout (206 tests, quelques secondes).
 
 ## 13. Étendre StayBench
 

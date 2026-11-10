@@ -8,7 +8,9 @@ import { describe, expect, it } from "vitest";
 import { ScriptedGoodAgent } from "../../src/agents/scripted-good.js";
 import { mcpCaller } from "../../src/agents/types.js";
 import { cmdGrade, cmdList, cmdRun, type Io } from "../../src/cli/commands.js";
-import { findScenario } from "../../src/scenarios/loader.js";
+import { findScenario, loadScenarios } from "../../src/scenarios/loader.js";
+
+const N = loadScenarios().length;
 
 function capture(): Io & { stdout: string[]; stderr: string[] } {
   const stdout: string[] = [];
@@ -26,7 +28,7 @@ describe("CLI commands (in-process)", () => {
     expect(io.stdout[0]).toMatch(/^happy-path\s+v1\s+easy\s+Plain refundable booking/);
     const j = capture();
     cmdList({ json: true }, j);
-    expect(JSON.parse(j.stdout[0]!)).toHaveLength(15);
+    expect(JSON.parse(j.stdout[0]!)).toHaveLength(N);
   });
 
   it("run writes a trace that grade replays to the same score", async () => {
@@ -57,8 +59,8 @@ describe("CLI commands (in-process)", () => {
   it("run --all summarizes the average", async () => {
     const io = capture();
     const { results } = await cmdRun({ agent: "scripted-good", all: true, out: tmp() }, io);
-    expect(results).toHaveLength(15);
-    expect(io.stdout.at(-1)).toBe("\nAverage: 100.0/100, passed 15/15");
+    expect(results).toHaveLength(N);
+    expect(io.stdout.at(-1)).toBe(`\nAverage: 100.0/100, passed ${N}/${N}`);
   });
 
   it("validates agent options", async () => {

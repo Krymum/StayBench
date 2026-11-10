@@ -170,3 +170,16 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
   by a rule the agent could not know. Scenarios 02 and 12 (v2) now say "If the price changes, check with me before
   booking." The trap stays: the agent must notice `price_changed` and honour the instruction. Trade-off: the sentence
   hints that a price change may happen in those two scenarios (see METHODOLOGY limits).
+
+## 0.2.1: six new scenarios (16-21)
+
+- New traps: last-minute stay whose refundable rate can no longer be cancelled for free, minimum star rating,
+  breakfast required, price jump over budget with an alternative hotel, ghost booking whose lookup is rate-limited,
+  everything sold out.
+- **New `board` constraint** (`room_only` | `breakfast`), checked by the grader against the booked plan.
+- **Refundability means free cancellation is still possible.** With `refundable_required`, a booking whose
+  free-cancellation deadline is not after the booking time violates the constraints, even if the policy flag says
+  refundable. No existing scenario is affected (all deadlines are in the future).
+- A patch release: the simulator's responses are unchanged, so 0.2.0 traces still replay. Existing submissions
+  become `incomplete` until they add the six new scenarios.
+- **Multi-room bookings are still out of scope**: one room per booking (see METHODOLOGY limits).

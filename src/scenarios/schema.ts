@@ -91,6 +91,7 @@ export const scenarioSchema = z.strictObject({
       refundable_required: z.boolean().default(false),
       bed_type: bedType.optional(),
       min_stars: z.number().int().min(1).max(5).optional(),
+      board: z.enum(["room_only", "breakfast"]).optional(),
     }),
     replies: z.array(replyRule).default([]),
     default_reply: z.string().optional(),

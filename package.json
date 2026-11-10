@@ -1,6 +1,6 @@
 {
   "name": "staybench",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Open-source sandbox to test AI agents on hotel booking, with injected faults and deterministic grading.",
   "license": "MIT",
   "type": "module",

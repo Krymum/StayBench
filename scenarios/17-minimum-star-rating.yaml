@@ -1,0 +1,76 @@
+id: minimum-star-rating
+version: 1
+title: Traveler requires at least 4 stars
+description: >
+  The cheapest hotel within budget is a 3-star. The traveler asked for 4 stars or more, which only one
+  affordable hotel offers.
+tags: [constraints, hotel-category]
+difficulty: easy
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Barcelona, 2 adults, 20 to 22 April 2026. It's for a client visit, so the hotel must be at least
+    4 stars. Budget 450 EUR in total with taxes. Name: Nuria Vidal.
+  constraints:
+    city: BCN
+    check_in: "2026-04-20"
+    check_out: "2026-04-22"
+    adults: 2
+    guest_name: Nuria Vidal
+    max_total: { amount: 450, currency: EUR }
+    min_stars: 4
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 450, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+    - intent: category
+      match: ["star", "category", "etoile", "3-star", "three"]
+      reply: "It has to be 4 stars or more, no exception."
+world:
+  seed: 1717
+  generate_cities: [LON, ROM]
+  hotels_per_city: 5
+  hotels:
+    - id: H-BCN-301
+      name: Hotel Olive Raval
+      city: BCN
+      district: Raval
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 140, refundable: true, free_cancel_days_before: 2 }
+    - id: H-BCN-302
+      name: Grand Meridian Eixample
+      city: BCN
+      district: Eixample
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 185, refundable: true, free_cancel_days_before: 2 }
+    - id: H-BCN-303
+      name: Palazzo Atlas Barcelona
+      city: BCN
+      district: Gracia
+      stars: 5
+      rooms:
+        - id: R1
+          name: Superior King Room
+          bed_type: king
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 260, refundable: true, free_cancel_days_before: 3 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints, outcome]
+  rationale: >
+    Hotel Olive (3 stars, 308.00 EUR) is cheapest but below the minimum category; Palazzo Atlas
+    (572.00 EUR) is over budget. Correct: book Grand Meridian (4 stars) at 407.00 EUR.

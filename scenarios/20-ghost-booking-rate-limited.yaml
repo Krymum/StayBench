@@ -1,0 +1,74 @@
+id: ghost-booking-rate-limited
+version: 1
+title: Ghost booking, and the lookup is rate-limited
+description: >
+  The book call times out but the booking exists, the supplier does not deduplicate references, and the
+  first get_booking call is rate-limited. An agent that gives up on the lookup and retries the booking
+  creates a duplicate.
+tags: [timeout, idempotency, rate-limit, phantom-booking]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    New York, 8 to 10 June 2026, 2 adults. Up to 800 USD in total with taxes. Booking name: Daniel Kim.
+  constraints:
+    city: NYC
+    check_in: "2026-06-08"
+    check_out: "2026-06-10"
+    adults: 2
+    guest_name: Daniel Kim
+    max_total: { amount: 800, currency: USD }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 800, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my limit." }
+world:
+  seed: 2020
+  generate_cities: [LON, BCN]
+  hotels_per_city: 5
+  hotels:
+    - id: H-NYC-201
+      name: The Harbor Chelsea
+      city: NYC
+      district: Chelsea
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 300, refundable: true, free_cancel_days_before: 2 }
+    - id: H-NYC-202
+      name: Hotel Lumen SoHo
+      city: NYC
+      district: SoHo
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 330, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: ghost-timeout
+    type: error
+    on: book
+    code: TIMEOUT
+    booking_created: true
+  - id: no-dedup
+    type: duplicate_reference
+    mode: accept
+  - id: lookup-429
+    type: rate_limit
+    on: get_booking
+    occurrence: first
+    retry_after_s: 30
+expected:
+  outcome: book
+  focus: [integrity]
+  rationale: >
+    The book call on The Harbor Chelsea (688.50 USD) times out but the booking exists. The first
+    get_booking returns 429 (Retry-After 30 s). Correct: wait, look the booking up again, report it.
+    Any new booking attempt creates a duplicate.

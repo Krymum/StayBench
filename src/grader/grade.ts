@@ -89,8 +89,15 @@ export function constraintViolations(b: BookingRecord, c: Constraints, session: 
     }
   }
   if (c.refundable_required && !b.refundable) out.push("non-refundable rate booked although the traveler required a refundable one");
+  else if (c.refundable_required && (b.free_cancellation_until === null || Date.parse(b.free_cancellation_until) <= Date.parse(b.created_at))) {
+    out.push(`free cancellation had already ended (${b.free_cancellation_until}) when the booking was made: not refundable in practice`);
+  }
   if (c.bed_type && room.bedType !== c.bed_type) out.push(`wrong bed type (${room.bedType} instead of ${c.bed_type}) in "${room.name}"`);
   if (c.min_stars && hotel.stars < c.min_stars) out.push(`hotel has ${hotel.stars} stars, minimum is ${c.min_stars}`);
+  if (c.board) {
+    const plan = room.plans.find((p) => p.id === b.plan_id)!;
+    if (plan.board !== c.board) out.push(`wrong board (${plan.board} instead of ${c.board})`);
+  }
   return out;
 }
 

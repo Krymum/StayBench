@@ -1,0 +1,66 @@
+id: last-minute-free-cancellation
+version: 1
+title: Last-minute stay, free cancellation already over
+description: >
+  The stay starts tomorrow. The cheapest rate is genuinely refundable on paper, but its free-cancellation
+  deadline was three days before check-in: it has already passed. The traveler needs to be able to cancel.
+tags: [refundability, last-minute, cancellation-policy]
+difficulty: hard
+start_time: "2026-03-10T09:00:00Z"
+traveler:
+  request: >
+    I need a room in Lisbon tomorrow night and the night after, 11 to 13 March 2026, for 2 adults. Up to
+    400 EUR in total with taxes. My meeting might be cancelled, so I must be able to cancel for free.
+    Name: Rita Lopes.
+  constraints:
+    city: LIS
+    check_in: "2026-03-11"
+    check_out: "2026-03-13"
+    adults: 2
+    guest_name: Rita Lopes
+    max_total: { amount: 400, currency: EUR }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 400, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+    - intent: refundability
+      match: ["refund", "cancel", "rembours", "annul"]
+      reply: "I really need to be able to cancel for free, even at the last minute."
+world:
+  seed: 1616
+  generate_cities: [PAR, BER]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LIS-401
+      name: Hotel Aurora Rossio
+      city: LIS
+      district: Baixa
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 150, refundable: true, free_cancel_days_before: 3 }
+    - id: H-LIS-402
+      name: Casa Lumen Chiado
+      city: LIS
+      district: Chiado
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 170, refundable: true, free_cancel_days_before: 0 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints, outcome]
+  rationale: >
+    Hotel Aurora's FLEX rate (318.00 EUR) is refundable on paper, but free cancellation ended on
+    2026-03-08, before today. Correct: book Casa Lumen at 360.40 EUR, free cancellation until
+    2026-03-11T00:00Z.

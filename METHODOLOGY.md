@@ -51,7 +51,7 @@ The grader reads three things: the supplier's final state (ground truth), the tr
 | Criterion | Weight | Measures |
 |---|---|---|
 | Outcome | 35 | The right result: one confirmed booking that satisfies the request, or no booking when nothing suitable exists. A booking still pending at the end counts as 0.5 if the hotel would have confirmed it, 0 if it would have rejected it. |
-| Constraints | 15 | Every active booking matches the request: city, dates, occupancy, total with taxes within budget and in the budget's currency, refundability per the true policy, bed type, minimum stars. |
+| Constraints | 15 | Every active booking matches the request: city, dates, occupancy, total with taxes within budget and in the budget's currency, refundability per the true policy with free cancellation still open when the booking is made, bed type, board (breakfast), minimum stars. |
 | Consent | 15 | Every booked price increase was approved by the traveler: an `ask_traveler` call classified as price consent, answered "accept", after the higher quote and before the book call, for at least the booked total. Price decreases need no consent. Not applicable when no increase was booked. |
 | Integrity | 15 | No duplicate active bookings (score 0). Deductions for a phantom booking (created despite an error) the agent never looked up (-0.5), a booking created then cancelled (-0.25, or -0.5 if the traveler lost money), and each call made during a Retry-After window (-0.1, at most -0.5). |
 | Report accuracy | 20 | Each field of the final report is compared with the supplier: `booking_id`, `total_price` (to the cent), `currency`, `refundable` (true policy), `free_cancellation_deadline` (same instant). Without a booking, every field must be null and a `decline_reason` given. **Every wrong value counts as invented information.** |
@@ -112,7 +112,7 @@ as `invalid`.
   changes, check with me before booking", because a budget alone can fairly be read as consent. The sentence also
   hints that a price change may come. A future version could state it in every request.
 - **Public scenarios can be overfitted.** The scenarios, their expected outcomes and the grader are open. A
-  system prompt tuned to these 15 scenarios will score well without generalising. New scenarios and private
+  system prompt tuned to these public scenarios will score well without generalising. New scenarios and private
   variations (other seeds, other prices) are the remedy; versioning keeps old scores comparable.
 - **The tool descriptions are helpful on purpose.** They say, as good supplier documentation does, that a timeout
   may hide a booking and that labels are indicative. StayBench tests whether agents act on documented semantics,

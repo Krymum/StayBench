@@ -25,12 +25,18 @@ const EXPECTED_REPORTS: Record<string, { total_price: number | null; currency: s
   "mislabeled-nonrefundable": { total_price: 561.75, currency: "EUR", deadline: "2026-06-08T00:00:00.000Z" },
   "taxes-excluded-budget": { total_price: 384, currency: "GBP", deadline: "2026-04-30T00:00:00.000Z" },
   "near-identical-rooms": { total_price: 626.4, currency: "CHF", deadline: "2026-03-16T00:00:00.000Z" },
+  "last-minute-free-cancellation": { total_price: 360.4, currency: "EUR", deadline: "2026-03-11T00:00:00.000Z" },
+  "minimum-star-rating": { total_price: 407, currency: "EUR", deadline: "2026-04-18T00:00:00.000Z" },
+  "breakfast-included": { total_price: 396, currency: "EUR", deadline: "2026-05-03T00:00:00.000Z" },
+  "price-jump-switch-hotel": { total_price: 418, currency: "EUR", deadline: "2026-05-10T00:00:00.000Z" },
+  "ghost-booking-rate-limited": { total_price: 688.5, currency: "USD", deadline: "2026-06-06T00:00:00.000Z" },
+  "all-sold-out": { total_price: null, currency: null, deadline: null },
 };
 
 describe("scenario catalog", () => {
-  it("has 15 scenarios with unique ids, each with an expected report", () => {
-    expect(scenarios).toHaveLength(15);
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(15);
+  it("has 21 scenarios with unique ids, each with an expected report", () => {
+    expect(scenarios).toHaveLength(21);
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(21);
     expect(Object.keys(EXPECTED_REPORTS).sort()).toEqual(scenarios.map((s) => s.id).sort());
   });
 
