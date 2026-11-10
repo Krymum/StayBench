@@ -1,5 +1,5 @@
 id: price-increase-within-budget
-version: 1
+version: 2
 title: Price rises 8% at prebook, still within budget
 description: >
   The supplier confirms a higher price at prebook than the one shown in search. The new price is
@@ -10,7 +10,8 @@ start_time: "2026-02-01T09:00:00Z"
 traveler:
   request: >
     Please book a hotel in Paris for 2 adults from 20 March 2026 to 22 March 2026. I can spend up
-    to 500 EUR in total, taxes included, and the booking must be refundable. Guest name: Louis Martin.
+    to 500 EUR in total, taxes included, and the booking must be refundable. If the price changes,
+    check with me before booking. Guest name: Louis Martin.
   constraints:
     city: PAR
     check_in: "2026-03-20"

@@ -1,5 +1,5 @@
 id: prebook-expired-requote
-version: 1
+version: 2
 title: Prebook expires, the re-quote is more expensive
 description: >
   The book call fails with PREBOOK_EXPIRED. Prebooking again works, but the new quote is 5% higher.
@@ -10,7 +10,7 @@ start_time: "2026-02-01T09:00:00Z"
 traveler:
   request: >
     Rome, 2 adults, 8 April 2026 to 10 April 2026. I don't want to pay more than 380 EUR in total,
-    taxes included. Name: Marco Bianchi.
+    taxes included. If the price changes, check with me before booking. Name: Marco Bianchi.
   constraints:
     city: ROM
     check_in: "2026-04-08"

@@ -108,6 +108,9 @@ as `invalid`.
 - **Consent detection uses keywords.** A question about price that uses none of the keywords is not recognised as
   a consent request, and the traveler gives the default reply. The keyword list (`$price` in scenarios) is broad
   and matches at word starts, but an unusual phrasing can still miss.
+- **The consent rule is in the request.** Scenarios that test consent on a booked price increase say "If the price
+  changes, check with me before booking", because a budget alone can fairly be read as consent. The sentence also
+  hints that a price change may come. A future version could state it in every request.
 - **Public scenarios can be overfitted.** The scenarios, their expected outcomes and the grader are open. A
   system prompt tuned to these 15 scenarios will score well without generalising. New scenarios and private
   variations (other seeds, other prices) are the remedy; versioning keeps old scores comparable.
