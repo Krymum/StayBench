@@ -1,0 +1,70 @@
+id: near-identical-rooms
+version: 1
+title: Two almost identical room names
+description: >
+  The traveler needs two separate beds. One hotel lists two rooms whose names are almost identical;
+  only the bed type tells them apart. Classic content-mapping trap.
+tags: [content-mapping, room-type]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Zurich, 2 adults (colleagues on a business trip), 18 March 2026 to 20 March 2026. We need two
+    separate beds. Budget 700 CHF in total including taxes. Booking name: Lukas Meier.
+  constraints:
+    city: ZRH
+    check_in: "2026-03-18"
+    check_out: "2026-03-20"
+    adults: 2
+    guest_name: Lukas Meier
+    max_total: { amount: 700, currency: CHF }
+    bed_type: twin
+  replies:
+    - intent: bed_type
+      match: ["bed", "twin", "double", "lit", "lits"]
+      reply: "Two separate beds, please. A double bed won't work for us."
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 700, accept: "Yes, that's fine, go ahead.", refuse: "No, too expensive." }
+world:
+  seed: 1515
+  generate_cities: [BER, LON]
+  hotels_per_city: 5
+  hotels:
+    - id: H-ZRH-101
+      name: Hotel Belvedere Zurich
+      city: ZRH
+      district: Altstadt
+      stars: 4
+      rooms:
+        - id: R1
+          name: Deluxe Room, City View
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 280, refundable: true, free_cancel_days_before: 2 }
+        - id: R2
+          name: Deluxe Room - City View
+          bed_type: twin
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 290, refundable: true, free_cancel_days_before: 2 }
+    - id: H-ZRH-102
+      name: Residence Seefeld
+      city: ZRH
+      district: Seefeld
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 250, refundable: true, free_cancel_days_before: 1 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints]
+  rationale: >
+    Only "Deluxe Room - City View" (bed_type twin, 626.40 CHF) fits. "Deluxe Room, City View" and
+    Residence Seefeld have a double bed. Correct: book the twin room.

@@ -1,0 +1,68 @@
+id: on-request-confirmed
+version: 1
+title: On-request booking that gets confirmed
+description: >
+  The hotel accepts the booking as "pending" and confirms it a few minutes later. The agent must
+  wait and check the booking status instead of reporting an unconfirmed booking.
+tags: [on-request, async]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    New York, 2 adults, 15 April 2026 to 18 April 2026. My limit is 1400 USD in total, taxes
+    included. Book it under Emily Carter.
+  constraints:
+    city: NYC
+    check_in: "2026-04-15"
+    check_out: "2026-04-18"
+    adults: 2
+    guest_name: Emily Carter
+    max_total: { amount: 1400, currency: USD }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 1400, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my limit." }
+    - intent: pending
+      match: ["pending", "on request", "wait", "confirmation"]
+      reply: "I can wait a bit for the hotel to confirm."
+world:
+  seed: 707
+  generate_cities: [LON, BCN]
+  hotels_per_city: 5
+  hotels:
+    - id: H-NYC-101
+      name: The Meridian Midtown
+      city: NYC
+      district: Midtown
+      stars: 4
+      rooms:
+        - id: R1
+          name: Superior King Room
+          bed_type: king
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 300, refundable: true, free_cancel_days_before: 3 }
+    - id: H-NYC-102
+      name: Hotel Atlas Chelsea
+      city: NYC
+      district: Chelsea
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 360, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: on-request
+    type: on_request
+    where: { hotel_id: H-NYC-101 }
+    outcome: confirmed
+    resolve_after_s: 300
+expected:
+  outcome: book
+  focus: [outcome]
+  rationale: >
+    The Meridian (1032.75 USD) answers "pending" and confirms after 5 simulated minutes. Correct:
+    wait, check with get_booking, then report the confirmed booking.

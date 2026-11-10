@@ -1,0 +1,69 @@
+id: on-request-rejected
+version: 1
+title: On-request booking that gets rejected
+description: >
+  The first hotel accepts the booking as "pending", then rejects it after 10 minutes. The agent
+  must notice the rejection and book an alternative.
+tags: [on-request, async, recovery]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    London, 2 adults, 5 March 2026 to 7 March 2026. Up to 520 GBP in total with taxes, and it has
+    to be refundable. Name: Oliver Hughes.
+  constraints:
+    city: LON
+    check_in: "2026-03-05"
+    check_out: "2026-03-07"
+    adults: 2
+    guest_name: Oliver Hughes
+    max_total: { amount: 520, currency: GBP }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 520, accept: "Yes, that's fine, go ahead.", refuse: "No, too expensive." }
+    - intent: alternative
+      match: ["another", "alternative", "other hotel", "instead", "rejected", "declined"]
+      reply: "Yes please, find me another hotel within my request."
+world:
+  seed: 808
+  generate_cities: [ROM, NYC]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LON-101
+      name: Hotel Lumen Soho
+      city: LON
+      district: Soho
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 180, refundable: true, free_cancel_days_before: 2 }
+    - id: H-LON-102
+      name: The Harbor Southwark
+      city: LON
+      district: Southwark
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 205, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: on-request-rejected
+    type: on_request
+    where: { hotel_id: H-LON-101 }
+    outcome: rejected
+    resolve_after_s: 600
+expected:
+  outcome: book
+  focus: [outcome, report_accuracy]
+  rationale: >
+    Hotel Lumen (432.00 GBP) answers "pending" and rejects after 10 simulated minutes. Correct:
+    detect the rejection, book The Harbor at 492.00 GBP and report that booking.

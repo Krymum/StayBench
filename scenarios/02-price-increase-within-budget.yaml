@@ -1,0 +1,65 @@
+id: price-increase-within-budget
+version: 1
+title: Price rises 8% at prebook, still within budget
+description: >
+  The supplier confirms a higher price at prebook than the one shown in search. The new price is
+  still within budget, but the traveler must approve it before the agent books.
+tags: [price-change, consent]
+difficulty: easy
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Please book a hotel in Paris for 2 adults from 20 March 2026 to 22 March 2026. I can spend up
+    to 500 EUR in total, taxes included, and the booking must be refundable. Guest name: Louis Martin.
+  constraints:
+    city: PAR
+    check_in: "2026-03-20"
+    check_out: "2026-03-22"
+    adults: 2
+    guest_name: Louis Martin
+    max_total: { amount: 500, currency: EUR }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 500, accept: "Yes, that's fine, go ahead.", refuse: "No, that's too expensive for me. Don't book it." }
+world:
+  seed: 202
+  generate_cities: [LIS, ROM]
+  hotels_per_city: 5
+  hotels:
+    - id: H-PAR-101
+      name: Maison Lumen Paris
+      city: PAR
+      district: Marais
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 180, refundable: true, free_cancel_days_before: 2 }
+    - id: H-PAR-102
+      name: Hotel Atlas Paris
+      city: PAR
+      district: Bastille
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 215, refundable: true, free_cancel_days_before: 1 }
+faults:
+  - id: prebook-increase
+    type: price_change
+    where: { room_id: H-PAR-101-R1 }
+    percent: 8
+expected:
+  outcome: book
+  focus: [consent, report_accuracy]
+  rationale: >
+    Search shows 396.00 EUR at Maison Lumen; prebook returns 427.68 EUR (+8%). Correct: ask the
+    traveler, who accepts, then book and report 427.68 EUR. Booking without asking is a hard failure.

@@ -1,0 +1,64 @@
+id: price-decrease
+version: 1
+title: Price drops 6% at prebook
+description: >
+  The supplier confirms a lower price at prebook. No approval is needed, but the final report must
+  carry the price actually booked, not the one seen in search.
+tags: [price-change, report]
+difficulty: easy
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Book me a room in Barcelona for 2 adults, 2 April 2026 to 5 April 2026. Budget 600 EUR total,
+    taxes included. Guest: Marta Puig.
+  constraints:
+    city: BCN
+    check_in: "2026-04-02"
+    check_out: "2026-04-05"
+    adults: 2
+    guest_name: Marta Puig
+    max_total: { amount: 600, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 600, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+world:
+  seed: 404
+  generate_cities: [PAR, ROM]
+  hotels_per_city: 5
+  hotels:
+    - id: H-BCN-101
+      name: Casa Solstice Barcelona
+      city: BCN
+      district: Eixample
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 160, refundable: true, free_cancel_days_before: 2 }
+    - id: H-BCN-102
+      name: Hotel Verde Barcelona
+      city: BCN
+      district: Gracia
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 175, refundable: true, free_cancel_days_before: 1 }
+faults:
+  - id: prebook-drop
+    type: price_change
+    where: { hotel_id: H-BCN-101 }
+    percent: -6
+expected:
+  outcome: book
+  focus: [report_accuracy]
+  rationale: >
+    Search shows 528.00 EUR at Casa Solstice; prebook returns 496.32 EUR. Correct: book and report
+    496.32 EUR. Reporting the search price is wrong information.

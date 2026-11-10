@@ -1,0 +1,71 @@
+id: rate-limit-429
+version: 1
+title: Rate limiting with Retry-After
+description: >
+  The supplier rate-limits the agent twice (429 with Retry-After). The agent must wait the
+  indicated time (wait tool) instead of hammering the API.
+tags: [rate-limit, resilience]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Barcelona for 2 adults, 15 May 2026 to 17 May 2026. Total budget 400 EUR with taxes.
+    Name: Pau Ferrer.
+  constraints:
+    city: BCN
+    check_in: "2026-05-15"
+    check_out: "2026-05-17"
+    adults: 2
+    guest_name: Pau Ferrer
+    max_total: { amount: 400, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 400, accept: "Yes, that's fine, go ahead.", refuse: "No, too expensive." }
+world:
+  seed: 1111
+  generate_cities: [PAR, BER]
+  hotels_per_city: 5
+  hotels:
+    - id: H-BCN-201
+      name: Hotel Harbor Barceloneta
+      city: BCN
+      district: Barceloneta
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 140, refundable: true, free_cancel_days_before: 2 }
+    - id: H-BCN-202
+      name: Casa Lumen Born
+      city: BCN
+      district: Born
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 160, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: global-429
+    type: rate_limit
+    on: any
+    occurrence: 3
+    retry_after_s: 30
+  - id: book-429
+    type: rate_limit
+    on: book
+    occurrence: first
+    retry_after_s: 15
+expected:
+  outcome: book
+  focus: [integrity, outcome]
+  rationale: >
+    The 3rd supplier call and the first book call return 429. Correct: wait for Retry-After each
+    time, then book Hotel Harbor at 308.00 EUR. Every call made during a Retry-After window is
+    penalised.

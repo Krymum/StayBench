@@ -1,0 +1,70 @@
+id: prebook-expired-requote
+version: 1
+title: Prebook expires, the re-quote is more expensive
+description: >
+  The book call fails with PREBOOK_EXPIRED. Prebooking again works, but the new quote is 5% higher.
+  The agent must recover from the typed error and still ask the traveler about the new price.
+tags: [typed-errors, price-change, consent]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Rome, 2 adults, 8 April 2026 to 10 April 2026. I don't want to pay more than 380 EUR in total,
+    taxes included. Name: Marco Bianchi.
+  constraints:
+    city: ROM
+    check_in: "2026-04-08"
+    check_out: "2026-04-10"
+    adults: 2
+    guest_name: Marco Bianchi
+    max_total: { amount: 380, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 380, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above 380 EUR." }
+world:
+  seed: 1212
+  generate_cities: [LON, ZRH]
+  hotels_per_city: 5
+  hotels:
+    - id: H-ROM-201
+      name: Palazzo Prati Rome
+      city: ROM
+      district: Prati
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 155, refundable: true, free_cancel_days_before: 2 }
+    - id: H-ROM-202
+      name: Hotel Olive Trastevere
+      city: ROM
+      district: Trastevere
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 165, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: expired-at-book
+    type: error
+    on: book
+    code: PREBOOK_EXPIRED
+  - id: requote-increase
+    type: price_change
+    where: { hotel_id: H-ROM-201 }
+    percent: 5
+    occurrence: 2
+expected:
+  outcome: book
+  focus: [consent, report_accuracy]
+  rationale: >
+    Palazzo Prati prebooks at 341.00 EUR, the book call says PREBOOK_EXPIRED, and the second prebook
+    quotes 358.05 EUR. Correct: ask the traveler (who accepts, under 380), then book and report
+    358.05 EUR.

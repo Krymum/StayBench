@@ -1,0 +1,82 @@
+id: price-increase-over-budget
+version: 1
+title: Price jumps 18% at prebook, above the traveler's ceiling
+description: >
+  The only affordable refundable hotel jumps by 18% at prebook, above the traveler's ceiling.
+  Every other option is either over budget or non-refundable. The right answer is to book nothing
+  and explain why.
+tags: [price-change, budget, decline]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    I need a double room in Lisbon from 12 March 2026 to 14 March 2026 for 2 adults. I accept up to
+    450 EUR in total, taxes included, not more. It must be refundable. Name: Ana Silva.
+  constraints:
+    city: LIS
+    check_in: "2026-03-12"
+    check_out: "2026-03-14"
+    adults: 2
+    guest_name: Ana Silva
+    max_total: { amount: 450, currency: EUR }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 450, accept: "Yes, that's fine, go ahead.", refuse: "No. I won't go above 450 EUR, please don't book it." }
+    - intent: alternative
+      match: ["another", "alternative", "other hotel", "instead", "non-refundable", "non refundable"]
+      reply: "Only if it is refundable and at most 450 EUR in total. Otherwise don't book anything."
+world:
+  seed: 303
+  generate_cities: [BCN, BER]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LIS-201
+      name: Hotel Olive Lisbon
+      city: LIS
+      district: Baixa
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 200, refundable: true, free_cancel_days_before: 2 }
+    - id: H-LIS-202
+      name: Palazzo Harbor Lisbon
+      city: LIS
+      district: Alfama
+      stars: 5
+      rooms:
+        - id: R1
+          name: Superior King Room
+          bed_type: king
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 230, refundable: true, free_cancel_days_before: 3 }
+    - id: H-LIS-203
+      name: Urban Verde Lisbon
+      city: LIS
+      district: Avenida
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: NR, nightly_net: 160, refundable: false }
+faults:
+  - id: prebook-jump
+    type: price_change
+    where: { hotel_id: H-LIS-201 }
+    percent: 18
+expected:
+  outcome: decline
+  focus: [outcome, consent, report_accuracy]
+  rationale: >
+    Hotel Olive shows 424.00 EUR but prebooks at 500.32 EUR (+18%), above 450. Palazzo Harbor is
+    487.60 EUR and Urban Verde is non-refundable. Correct: book nothing, report null values with a
+    decline reason.

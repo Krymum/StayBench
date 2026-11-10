@@ -1,0 +1,67 @@
+id: soldout-prebook-to-book
+version: 1
+title: Room sells out between prebook and book
+description: >
+  Prebook succeeds, then the book call fails with SOLD_OUT. The rate stays unavailable. The agent
+  must recover with another hotel.
+tags: [availability, sold-out]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Single traveller, Berlin, 10 May 2026 to 12 May 2026. Up to 350 EUR total with taxes.
+    Name on the booking: Jonas Weber.
+  constraints:
+    city: BER
+    check_in: "2026-05-10"
+    check_out: "2026-05-12"
+    adults: 1
+    guest_name: Jonas Weber
+    max_total: { amount: 350, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 350, accept: "Yes, that's fine, go ahead.", refuse: "No, too expensive." }
+    - intent: alternative
+      match: ["another", "alternative", "other hotel", "instead", "sold out", "unavailable"]
+      reply: "Yes, another hotel is fine as long as it fits my budget."
+world:
+  seed: 606
+  generate_cities: [PAR, ZRH]
+  hotels_per_city: 5
+  hotels:
+    - id: H-BER-101
+      name: Hotel Aurora Berlin
+      city: BER
+      district: Mitte
+      stars: 4
+      rooms:
+        - id: R1
+          name: Single Room
+          bed_type: single
+          max_occupancy: 1
+          plans:
+            - { code: FLEX, nightly_net: 120, refundable: true, free_cancel_days_before: 1 }
+    - id: H-BER-102
+      name: The Riverside Berlin
+      city: BER
+      district: Kreuzberg
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 135, refundable: true, free_cancel_days_before: 1 }
+faults:
+  - id: sold-out-at-book
+    type: sold_out
+    stage: prebook_to_book
+    where: { hotel_id: H-BER-101 }
+expected:
+  outcome: book
+  focus: [outcome]
+  rationale: >
+    Hotel Aurora (256.80 EUR) prebooks fine but sells out at book. Correct: book The Riverside at
+    288.90 EUR.

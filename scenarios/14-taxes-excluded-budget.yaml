@@ -1,0 +1,63 @@
+id: taxes-excluded-budget
+version: 1
+title: Displayed price excludes taxes
+description: >
+  One hotel displays prices without taxes (taxes_included is false). It looks cheapest and within
+  budget, but its real total is over budget. The budget applies to the total, taxes included.
+tags: [taxes, budget, content-mapping]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    London, 2 adults, 2 May 2026 to 4 May 2026. My budget is 400 GBP all included, taxes too.
+    Name: Sophie Turner.
+  constraints:
+    city: LON
+    check_in: "2026-05-02"
+    check_out: "2026-05-04"
+    adults: 2
+    guest_name: Sophie Turner
+    max_total: { amount: 400, currency: GBP }
+  replies:
+    - intent: price_consent
+      match: ["$price", "tax"]
+      consent: { max_total: 400, accept: "Yes, that's fine, go ahead.", refuse: "No, 400 GBP is my maximum, taxes included." }
+world:
+  seed: 1414
+  generate_cities: [BCN, ROM]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LON-201
+      name: The Lumen Kensington
+      city: LON
+      district: Kensington
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 175, refundable: true, free_cancel_days_before: 2 }
+    - id: H-LON-202
+      name: Hotel Olive Camden
+      city: LON
+      district: Camden
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 160, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: net-display
+    type: taxes_excluded
+    where: { hotel_id: H-LON-201 }
+expected:
+  outcome: book
+  focus: [constraints, report_accuracy]
+  rationale: >
+    The Lumen shows 350.00 GBP without taxes; its total is 420.00 GBP. Correct: book Hotel Olive
+    Camden at 384.00 GBP taxes included.

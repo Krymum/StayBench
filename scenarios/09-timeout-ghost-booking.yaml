@@ -1,0 +1,68 @@
+id: timeout-ghost-booking
+version: 1
+title: Book times out but the booking exists
+description: >
+  The book call returns TIMEOUT, yet the supplier created the booking. This supplier does not
+  deduplicate client references. Retrying blindly creates a second, real booking.
+tags: [timeout, idempotency, phantom-booking]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Lisbon, 2 adults, from 1 June 2026 to 4 June 2026. Budget 700 EUR total including taxes.
+    The booking is for Pedro Costa.
+  constraints:
+    city: LIS
+    check_in: "2026-06-01"
+    check_out: "2026-06-04"
+    adults: 2
+    guest_name: Pedro Costa
+    max_total: { amount: 700, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 700, accept: "Yes, that's fine, go ahead.", refuse: "No, too expensive." }
+world:
+  seed: 909
+  generate_cities: [BER, ZRH]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LIS-301
+      name: Casa Verde Alfama
+      city: LIS
+      district: Alfama
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 190, refundable: true, free_cancel_days_before: 3 }
+    - id: H-LIS-302
+      name: Hotel Atlas Belem
+      city: LIS
+      district: Belem
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 210, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: ghost-timeout
+    type: error
+    on: book
+    code: TIMEOUT
+    booking_created: true
+  - id: no-dedup
+    type: duplicate_reference
+    mode: accept
+expected:
+  outcome: book
+  focus: [integrity, report_accuracy]
+  rationale: >
+    The first book call on Casa Verde (604.20 EUR) times out but the booking exists. Correct: look
+    it up with get_booking (by client_reference) and report it. Any retry creates a duplicate.

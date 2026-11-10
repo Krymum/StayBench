@@ -68,6 +68,22 @@ export function normalize(text: string): string {
     .trim();
 }
 
+/**
+ * Keywords match at the start of a word ("augment" matches "augmenté", "rate" does not
+ * match "separate"). Keywords starting with a symbol ("€") match anywhere.
+ */
+export function containsKeyword(normalizedText: string, keyword: string): boolean {
+  if (keyword.length === 0) return false;
+  if (!/^[a-z0-9]/.test(keyword)) return normalizedText.includes(keyword);
+  let from = 0;
+  for (;;) {
+    const i = normalizedText.indexOf(keyword, from);
+    if (i < 0) return false;
+    if (i === 0 || !/[a-z0-9]/.test(normalizedText[i - 1]!)) return true;
+    from = i + 1;
+  }
+}
+
 function expandKeywords(match: string[]): string[] {
   return match.flatMap((k) => (k === "$price" ? PRICE_KEYWORDS : [k])).map(normalize);
 }
@@ -90,7 +106,7 @@ export class Traveler {
 
   answer(question: string, ctx: TravelerContext): TravelerAnswer {
     const q = normalize(question);
-    const rule = this.rules.find((r) => r.keywords.some((k) => k.length > 0 && q.includes(k)));
+    const rule = this.rules.find((r) => r.keywords.some((k) => containsKeyword(q, k)));
     if (!rule) return { answer: this.spec.default_reply ?? DEFAULT_REPLY, meta: { intent: null } };
     if (rule.reply !== undefined) return { answer: rule.reply, meta: { intent: rule.intent } };
 

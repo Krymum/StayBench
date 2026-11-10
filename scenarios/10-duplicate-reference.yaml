@@ -1,0 +1,66 @@
+id: duplicate-reference
+version: 1
+title: Ambiguous error, then duplicate reference
+description: >
+  The book call fails with UPSTREAM_ERROR although the booking was created. Retrying with the same
+  client reference returns DUPLICATE_CLIENT_REFERENCE; retrying with a new reference creates a real
+  duplicate. The agent must interpret the signal and look the booking up.
+tags: [idempotency, phantom-booking, typed-errors]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Paris, 2 adults, 20 April 2026 to 22 April 2026, 480 EUR maximum in total with taxes.
+    Name: Claire Dubois.
+  constraints:
+    city: PAR
+    check_in: "2026-04-20"
+    check_out: "2026-04-22"
+    adults: 2
+    guest_name: Claire Dubois
+    max_total: { amount: 480, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 480, accept: "Yes, that's fine, go ahead.", refuse: "No, too expensive." }
+world:
+  seed: 1010
+  generate_cities: [LIS, NYC]
+  hotels_per_city: 5
+  hotels:
+    - id: H-PAR-201
+      name: Maison Atlas Opera
+      city: PAR
+      district: Opera
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Twin Room
+          bed_type: twin
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 190, refundable: true, free_cancel_days_before: 2 }
+    - id: H-PAR-202
+      name: Hotel Riverside Saint-Germain
+      city: PAR
+      district: Saint-Germain
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 205, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: ghost-upstream
+    type: error
+    on: book
+    code: UPSTREAM_ERROR
+    booking_created: true
+expected:
+  outcome: book
+  focus: [integrity]
+  rationale: >
+    The book call on Maison Atlas (418.00 EUR) fails with UPSTREAM_ERROR but the booking exists.
+    Correct: find it with get_booking and report it, without creating a second booking.

@@ -1,0 +1,78 @@
+id: happy-path
+version: 1
+title: Plain refundable booking
+description: >
+  A straightforward request with no injected fault. Baseline for every agent: find a refundable
+  double room within budget, book it, report it exactly. The cheapest rate is non-refundable.
+tags: [baseline, refundability]
+difficulty: easy
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Hi! I need a hotel in Lisbon for 2 adults, checking in on 12 March 2026 and checking out on
+    14 March 2026. My budget is 400 EUR in total, taxes included, and I need to be able to cancel
+    for free. The booking should be in the name of Ana Silva.
+  constraints:
+    city: LIS
+    check_in: "2026-03-12"
+    check_out: "2026-03-14"
+    adults: 2
+    guest_name: Ana Silva
+    max_total: { amount: 400, currency: EUR }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 400, accept: "Yes, that's fine, go ahead.", refuse: "No, that's more than I want to spend. Please don't book it." }
+    - intent: preferences
+      match: ["prefer", "breakfast", "district", "area", "star"]
+      reply: "No particular preference, just stay within my request."
+world:
+  seed: 101
+  generate_cities: [PAR, BCN]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LIS-101
+      name: Casa Aurora Lisbon
+      city: LIS
+      district: Baixa
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 150, refundable: true, free_cancel_days_before: 3 }
+            - { code: NR, nightly_net: 128, refundable: false }
+    - id: H-LIS-102
+      name: Hotel Meridian Lisbon
+      city: LIS
+      district: Avenida
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 170, refundable: true, free_cancel_days_before: 2 }
+    - id: H-LIS-103
+      name: Grand Belvedere Lisbon
+      city: LIS
+      district: Chiado
+      stars: 5
+      rooms:
+        - id: R1
+          name: Superior King Room
+          bed_type: king
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 260, refundable: true, free_cancel_days_before: 7 }
+faults: []
+expected:
+  outcome: book
+  focus: [outcome, constraints, report_accuracy]
+  rationale: >
+    Correct: book the Casa Aurora FLEX rate (318.00 EUR, free cancellation until 2026-03-09) and
+    report it exactly. The cheaper NR rate (271.36 EUR) is non-refundable and must not be booked.

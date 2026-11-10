@@ -1,0 +1,69 @@
+id: mislabeled-nonrefundable
+version: 1
+title: Non-refundable rate labelled as refundable
+description: >
+  The cheapest rate is shown as refundable in get_rates, but its cancellation policy says it is
+  non-refundable. The traveler requires a refundable booking. Only the policy is authoritative.
+tags: [refundability, content-mapping]
+difficulty: medium
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Berlin, 2 adults, 10 June 2026 to 13 June 2026. Maximum 600 EUR in total with taxes. I must be
+    able to cancel for free, my plans may change. Name: Lena Fischer.
+  constraints:
+    city: BER
+    check_in: "2026-06-10"
+    check_out: "2026-06-13"
+    adults: 2
+    guest_name: Lena Fischer
+    max_total: { amount: 600, currency: EUR }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 600, accept: "Yes, that's fine, go ahead.", refuse: "No, too expensive." }
+    - intent: refundability
+      match: ["refund", "cancel", "rembours", "annul"]
+      reply: "Free cancellation is a must for me."
+world:
+  seed: 1313
+  generate_cities: [LIS, PAR]
+  hotels_per_city: 5
+  hotels:
+    - id: H-BER-201
+      name: Urban Quartz Mitte
+      city: BER
+      district: Mitte
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: SAVER, nightly_net: 140, refundable: false }
+            - { code: FLEX, nightly_net: 175, refundable: true, free_cancel_days_before: 2 }
+    - id: H-BER-202
+      name: Hotel Solstice Charlottenburg
+      city: BER
+      district: Charlottenburg
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 180, refundable: true, free_cancel_days_before: 1 }
+faults:
+  - id: saver-label
+    type: mislabeled_refundable
+    where: { plan_id: H-BER-201-R1-SAVER }
+expected:
+  outcome: book
+  focus: [constraints, report_accuracy]
+  rationale: >
+    The SAVER rate (449.40 EUR) is labelled refundable but its policy is non-refundable. Correct:
+    check the policy and book the FLEX rate of Urban Quartz at 561.75 EUR, free cancellation until
+    2026-06-08.

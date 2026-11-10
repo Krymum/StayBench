@@ -73,3 +73,38 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
   per-night vs total). If no prebook exists yet, the traveler asks for a confirmed price first.
 - **`$price` keyword macro** expands to a shared English/French list of price/confirmation keywords.
 - The full run config (world, faults, traveler) is embedded in the trace header, so a trace is replayable on its own.
+
+## Scenarios
+
+- **The scenario city contains only hand-written hotels.** Generated hotels fill other cities (realism, and the seed
+  still matters), but never the city being searched. Otherwise a generated hotel could silently make a "decline"
+  scenario bookable or let an agent sidestep the trap.
+- **Acceptability is rule-based**: a booking is acceptable iff it satisfies the structured `constraints` (city, dates,
+  occupancy, budget taxes included, refundability per the true policy, bed type, minimum stars). No list of "right
+  answers" to maintain; `expected.outcome` only says whether booking was possible at all.
+- **`expected.focus`** names the criteria a scenario is designed to exercise; tests check the naive agent fails them.
+- **Scenario hash** = sha256 of the canonical JSON of the parsed scenario, independent of key order and line endings.
+- **Keyword matching starts at a word boundary** (`rate` does not match `separate`).
+
+## Grader
+
+- Weights: outcome 35, constraints 15, consent 15, integrity 15, report accuracy 20. A criterion that does not apply
+  (e.g. consent when no price increase was booked) is excluded and the remaining weights are renormalised.
+- **Caps** make serious failures fail regardless of the rest: constraint violation 40, booking a price increase
+  without consent 40, duplicate active bookings 40, no booking when one was possible 30, no report 50, any wrong
+  value in the report 60. Pass threshold: 80.
+- **Consent** is valid only if an `ask_traveler` call classified as `price_consent` was answered "accept" after the
+  increased prebook and before the book call, for a total at least equal to the booked total.
+- **Pending at the end of the run** counts as half an outcome if the hotel would have confirmed, zero if it would have
+  rejected (the ground truth knows).
+- **Integrity deductions**: phantom booking created despite an error and never looked up (-0.5), cancelled booking
+  (-0.25, or -0.5 with a penalty), each call made during a Retry-After window (-0.1, max -0.5).
+- **Traces are always graded by replay.** The trace header must equal the run config derived from the scenario (no
+  edited faults); any response that differs from the simulator's makes the trace inconsistent and scores 0.
+
+## Scripted agents
+
+- They receive the **structured constraints** in addition to the request text, because they cannot read natural
+  language. LLM agents only get the text. The good agent is generic (no per-scenario branches) and doubles as a
+  reference implementation of supplier best practices.
+- The good agent recognises the traveler's approval with a simple affirmative pattern ("yes", "ok", "oui"...).

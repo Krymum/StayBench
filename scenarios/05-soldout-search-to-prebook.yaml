@@ -1,0 +1,69 @@
+id: soldout-search-to-prebook
+version: 1
+title: Hotel sells out between search and prebook
+description: >
+  The cheapest hotel still appears in (cached) search results but every prebook fails with
+  SOLD_OUT. The agent must move on to an available alternative instead of insisting or giving up.
+tags: [availability, sold-out]
+difficulty: easy
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    I'm looking for a hotel in Rome for 2 adults from 25 March 2026 to 27 March 2026, maximum
+    420 EUR in total including taxes. Booking name: Giulia Rossi.
+  constraints:
+    city: ROM
+    check_in: "2026-03-25"
+    check_out: "2026-03-27"
+    adults: 2
+    guest_name: Giulia Rossi
+    max_total: { amount: 420, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 420, accept: "Yes, that's fine, go ahead.", refuse: "No, that's over my budget." }
+    - intent: alternative
+      match: ["another", "alternative", "other hotel", "instead", "sold out", "unavailable"]
+      reply: "Sure, any other hotel that fits my request is fine."
+world:
+  seed: 505
+  generate_cities: [LIS, LON]
+  hotels_per_city: 5
+  hotels:
+    - id: H-ROM-101
+      name: Hotel Quartz Rome
+      city: ROM
+      district: Termini
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 150, refundable: true, free_cancel_days_before: 2 }
+            - { code: NR, nightly_net: 130, refundable: false }
+    - id: H-ROM-102
+      name: Residence Monti Rome
+      city: ROM
+      district: Monti
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 170, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: hotel-sold-out
+    type: sold_out
+    stage: search_to_prebook
+    where: { hotel_id: H-ROM-101 }
+    occurrence: always
+expected:
+  outcome: book
+  focus: [outcome]
+  rationale: >
+    Hotel Quartz (286.00 / 330.00 EUR in search) is sold out at prebook. Correct: book Residence
+    Monti at 374.00 EUR and report it.
