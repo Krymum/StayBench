@@ -94,6 +94,18 @@ export interface PrebookView {
   expires_at: string;
   /** Number of rooms, only when more than 1. */
   rooms?: number;
+  /** Present only when the cancellation terms changed at prebook. */
+  policy_changed?: true;
+  refundable?: boolean;
+  free_cancellation_until?: string | null;
+  /** Mandatory fees paid at the hotel, not included in total_price. Present only when > 0. */
+  pay_at_property?: PayAtProperty;
+}
+
+export interface PayAtProperty {
+  amount: number;
+  currency: Currency;
+  description: string;
 }
 
 export type BookingStatus = "confirmed" | "pending" | "rejected" | "cancelled";
@@ -114,6 +126,8 @@ export interface BookingView {
   rooms?: number;
   guest_name: string;
   total_price: number;
+  /** Mandatory fees paid at the hotel, not included in total_price. Present only when > 0. */
+  pay_at_property?: PayAtProperty;
   currency: Currency;
   refundable: boolean;
   free_cancellation_until: string | null;
@@ -182,6 +196,8 @@ export interface BookingRecord {
   rooms: number;
   guest_name: string;
   total_minor: number;
+  /** Mandatory fees paid at the hotel, in minor units (0 when none). */
+  pay_at_property_minor: number;
   currency: Currency;
   refundable: boolean;
   free_cancellation_until: string | null;
@@ -226,6 +242,8 @@ export class HotelProvider {
   /** Sticky state set by faults, keyed by rate id. */
   private readonly priceChanges = new Map<string, number[]>();
   private readonly soldOut = new Set<string>();
+  /** Rate ids whose cancellation terms changed to non-refundable at prebook. */
+  private readonly policyChanged = new Set<string>();
   private prebookSeq = 0;
   private bookingSeq = 0;
 
@@ -323,6 +341,20 @@ export class HotelProvider {
     return plan.refundable && plan.freeCancelDaysBefore !== null ? daysBefore(checkIn, plan.freeCancelDaysBefore) : null;
   }
 
+  /** Current cancellation terms of a rate, including changes made at prebook. */
+  private terms(r: ResolvedRate): { refundable: boolean; until: string | null } {
+    if (this.policyChanged.has(r.rateId)) return { refundable: false, until: null };
+    return { refundable: r.plan.refundable, until: this.deadline(r.plan, r.checkIn) };
+  }
+
+  private payAtPropertyMinor(r: ResolvedRate): number {
+    return (r.plan.payAtPropertyPerNightMinor ?? 0) * r.nights * r.rooms;
+  }
+
+  private payAtPropertyView(minor: number, currency: Currency): PayAtProperty {
+    return { amount: toMajor(minor), currency, description: "Mandatory city tax, paid at the hotel. Not included in total_price." };
+  }
+
   private gate(tool: ProviderTool): Result<void> {
     const wait = this.faults.rateLimit(tool);
     if (wait !== undefined) {
@@ -361,6 +393,7 @@ export class HotelProvider {
       ...(b.rooms > 1 ? { rooms: b.rooms } : {}),
       guest_name: b.guest_name,
       total_price: toMajor(b.total_minor),
+      ...(b.pay_at_property_minor > 0 ? { pay_at_property: this.payAtPropertyView(b.pay_at_property_minor, b.currency) } : {}),
       currency: b.currency,
       refundable: b.refundable,
       free_cancellation_until: b.free_cancellation_until,
@@ -461,10 +494,10 @@ export class HotelProvider {
     const err = this.injectedError("get_cancellation_policy", target);
     if (err) return fail(err.code, err.message ?? defaultErrorMessage(err.code));
     if (!r.ok) return r;
-    const until = this.deadline(r.data.plan, r.data.checkIn);
+    const { refundable, until } = this.terms(r.data);
     return ok({
       rate_id: args.rate_id,
-      refundable: r.data.plan.refundable,
+      refundable,
       free_cancellation_until: until,
       penalty: until
         ? `Free cancellation until ${until}. After that, 100% of the total is charged.`
@@ -494,6 +527,8 @@ export class HotelProvider {
 
     const pc = this.faults.fire("price_change", "prebook", target, undefined, (f) => ({ rate_id: rate.rateId, percent: f.percent }));
     if (pc) this.priceChanges.set(rate.rateId, [...(this.priceChanges.get(rate.rateId) ?? []), pc.percent]);
+    const pol = this.faults.fire("policy_change", "prebook", target, undefined, () => ({ rate_id: rate.rateId }));
+    if (pol) this.policyChanged.add(rate.rateId);
 
     const original = this.price(rate, false);
     const now = this.price(rate, true);
@@ -524,6 +559,8 @@ export class HotelProvider {
       ...(changed ? { previous_price: toMajor(original.total) } : {}),
       expires_at: new Date(rec.expires_at_ms).toISOString(),
       ...(rate.rooms > 1 ? { rooms: rate.rooms } : {}),
+      ...(this.policyChanged.has(rate.rateId) ? { policy_changed: true as const, refundable: false, free_cancellation_until: null } : {}),
+      ...(this.payAtPropertyMinor(rate) > 0 ? { pay_at_property: this.payAtPropertyView(this.payAtPropertyMinor(rate), rec.currency) } : {}),
     });
   }
 
@@ -596,9 +633,10 @@ export class HotelProvider {
       rooms: rate.rooms,
       guest_name: args.guest_name,
       total_minor: pb.total_minor,
+      pay_at_property_minor: this.payAtPropertyMinor(rate),
       currency: pb.currency,
-      refundable: rate.plan.refundable,
-      free_cancellation_until: this.deadline(rate.plan, rate.checkIn),
+      refundable: this.terms(rate).refundable,
+      free_cancellation_until: this.terms(rate).until,
       created_at: this.clock.nowIso(),
       ...(extra.createdDespiteError ? { created_despite_error: extra.createdDespiteError } : {}),
       ...(extra.resolveAtMs !== undefined ? { resolve_at_ms: extra.resolveAtMs, resolve_outcome: extra.outcome } : {}),

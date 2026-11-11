@@ -1,0 +1,68 @@
+id: policy-change-at-prebook
+version: 1
+title: Refundable rate turns non-refundable at prebook
+description: >
+  Search, rates and the cancellation policy all say the cheapest rate is refundable. At prebook, the supplier
+  re-validates the rate rules: it is now non-refundable (policy_changed). The traveler needs free
+  cancellation.
+tags: [cancellation-policy, refundability, re-validation]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Barcelona, 22 to 24 May 2026, 2 adults. Maximum 500 EUR in total with taxes, and I must be able to cancel
+    for free. Name: Laia Serra.
+  constraints:
+    city: BCN
+    check_in: "2026-05-22"
+    check_out: "2026-05-24"
+    adults: 2
+    guest_name: Laia Serra
+    max_total: { amount: 500, currency: EUR }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 500, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+    - intent: refundability
+      match: ["refund", "cancel", "rembours", "annul", "policy"]
+      reply: "Free cancellation is a must. I won't take a non-refundable booking."
+world:
+  seed: 2727
+  generate_cities: [ZRH, BER]
+  hotels_per_city: 5
+  hotels:
+    - id: H-BCN-401
+      name: Casa Verde Born
+      city: BCN
+      district: Born
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 180, refundable: true, free_cancel_days_before: 3 }
+    - id: H-BCN-402
+      name: Hotel Lumen Gracia
+      city: BCN
+      district: Gracia
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 200, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: rules-revalidated
+    type: policy_change
+    where: { hotel_id: H-BCN-401 }
+expected:
+  outcome: book
+  focus: [constraints]
+  rationale: >
+    Casa Verde's FLEX rate (396.00 EUR) is refundable until prebook, which returns policy_changed with
+    refundable false. Correct: book Hotel Lumen at 440.00 EUR, free cancellation until 2026-05-20.

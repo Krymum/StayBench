@@ -82,9 +82,9 @@ Every lost point comes with a sentence like these, computed from the supplier's 
 
 | Agent | Score | Passed |
 |---|---:|---:|
-| **Claude Code (Opus 5.5)**, via `claude -p` + StayBench MCP | **99.9** | 23/23 |
-| `scripted-good`: reference policy, no LLM | 100.0 | 23/23 |
-| `scripted-bad`: the classic mistakes, no LLM | 38.9 | 0/23 |
+| **Claude Code (Opus 5.5)**, via `claude -p` + StayBench MCP | **99.8** | 29/29 |
+| `scripted-good`: reference policy, no LLM | 100.0 | 29/29 |
+| `scripted-bad`: the classic mistakes, no LLM | 38.5 | 0/29 |
 
 As of 2026-11-10. Live board with per-scenario explanations: **[krymum.github.io/StayBench](https://krymum.github.io/StayBench/)**.
 Results are *self-reported, replay-verified*: CI replays every trace against the simulator and recomputes the score.
@@ -119,7 +119,7 @@ Node.js 22+ and pnpm (`npm i -g pnpm`):
 git clone https://github.com/Krymum/StayBench.git && cd StayBench
 pnpm install && pnpm build
 
-node dist/cli/index.js list                                                              # 23 scenarios
+node dist/cli/index.js list                                                              # 29 scenarios
 node dist/cli/index.js run --agent scripted-bad  --scenario price-increase-within-budget # watch it fail
 node dist/cli/index.js run --agent scripted-good --scenario price-increase-within-budget # and pass
 ```
@@ -190,7 +190,7 @@ staybench run --agent local-openai --base-url http://localhost:11434/v1 --model 
 
 </details>
 
-## The 23 scenarios
+## The 29 scenarios
 
 | # | Scenario | Difficulty | What goes wrong | The agent must |
 |---|---|---|---|---|
@@ -217,6 +217,12 @@ staybench run --agent local-openai --base-url http://localhost:11434/v1 --model 
 | 21 | `all-sold-out` | medium | Every hotel sells out at prebook | Decline without reporting unsecured prices |
 | 22 | `two-rooms-family` | medium | Two couples need two rooms; a cheaper family room is a single room | Book two rooms in one booking |
 | 23 | `last-room-available` | hard | Two rooms needed, the cheapest rate has one left | Find a rate with two rooms, never split the stay |
+| 24 | `ambiguous-shared-room` | hard | Shared room with a colleague, bed type unstated; cheapest is a double | Ask before booking (two beds) |
+| 25 | `relative-dates` | hard | "This Friday and Saturday night"; cheapest rate non-refundable | Work out the dates from the simulated date |
+| 26 | `slow-on-request` | hard | Pending booking refused only after 3 hours | Wait or cancel before booking elsewhere: one live booking |
+| 27 | `policy-change-at-prebook` | hard | Refundable rate turns non-refundable at prebook | Re-check the terms returned by prebook |
+| 28 | `pay-at-property-fee` | hard | City tax paid at the hotel breaks an all-in budget | Count fees paid at the hotel |
+| 29 | `cascade-failures` | hard | 429, sold out, price increase, ghost booking and 429 again, in one run | Handle all of them without a slip |
 
 YAML sources in [`scenarios/`](scenarios/). Contributing one: [METHODOLOGY.md](METHODOLOGY.md#contributing-a-scenario).
 
@@ -286,7 +292,7 @@ src/
   agents/      scripted agents and the OpenAI-compatible adapter
   leaderboard/ submission verification
   cli/         the staybench command
-scenarios/     the 23 YAML scenarios
+scenarios/     the 29 YAML scenarios
 results/       leaderboard submissions
 site/          Astro leaderboard site
 ```

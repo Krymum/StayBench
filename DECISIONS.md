@@ -190,3 +190,20 @@ Choices made where the spec was ambiguous. The rule: pick the simplest option, w
   (`rooms`, `rooms_left`, `rooms_requested`) only appear when they apply, so every earlier response is unchanged and
   0.2.0 traces still replay. `rooms` is optional in the scenario schema (absent = 1) so existing scenario hashes do
   not change.
+
+## 0.2.2: harder scenarios (24-29)
+
+- Claude Code reached 23/23, so new scenarios target judgement and combinations rather than single signals: an
+  unstated bed type (the agent must ask), relative dates, a three-hour on-request refusal, cancellation terms changed
+  at prebook, a city tax paid at the hotel within an all-in budget, and five failures chained in one run.
+- **New fault `policy_change`** (prebook): the rate becomes non-refundable for good; prebook returns
+  `policy_changed: true`, `refundable: false`, `free_cancellation_until: null`, and the policy endpoint and the
+  booking reflect it. The signal is explicit, like `price_changed`: the test is whether the agent reads it.
+- **Fees paid at the hotel** (`pay_at_property_per_night` on a plan): shown at prebook and on the booking as
+  `pay_at_property`, excluded from `total_price` (what the supplier charges, compared by the report check), included
+  in the budget check.
+- The reference agent now waits up to 4 simulated hours for an on-request answer (5-minute polls) and cancels a still
+  pending booking before trying another hotel. Cancelling instead of waiting costs 0.25 integrity and still passes.
+- In `slow-on-request` the duplicate trap targets agents that rebook while a booking is pending; the naive agent never
+  rebooks, so the scenario's `focus` is `outcome` only.
+- Still a patch release: new fields only appear in the new situations, earlier traces replay unchanged.

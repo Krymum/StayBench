@@ -109,6 +109,21 @@ Tout est réexporté depuis `src/index.ts` : StayBench s'utilise aussi comme bib
 Les prix affichés sont **périmés par construction** : après une hausse ou un sold-out découvert au prebook,
 `search_hotels` et `get_rates` continuent d'afficher l'ancienne donnée, comme le cache d'un vrai fournisseur.
 
+### Multi-chambres
+
+`search_hotels` et `get_rates` acceptent un `rooms` optionnel (1 par défaut) : des chambres identiques, `adults`
+étant le nombre d'adultes par chambre. Les prix couvrent toutes les chambres, et l'id de tarif prend un suffixe
+`~<rooms>` à partir de 2 chambres. Un plan tarifaire peut déclarer `available_rooms` : `get_rates` affiche alors
+`rooms_left`, et `prebook` comme `book` échouent avec `NOT_ENOUGH_ROOMS` s'il reste moins de chambres que demandé.
+Le grader exige toutes les chambres dans une seule réservation et signale un séjour éclaté. Pour une seule chambre,
+identifiants et réponses sont inchangés : les anciennes traces se rejouent toujours.
+
+### Frais payés à l'hôtel
+
+Un plan peut déclarer `pay_at_property_per_night` (champ de scénario) : le prebook et la réservation affichent alors
+`pay_at_property: {amount, currency, description}`, non inclus dans `total_price`. Le grader l'ajoute au total pour
+vérifier le budget.
+
 ### Moteur de pannes
 
 Les pannes sont déclarées dans le scénario et évaluées à des points de contrôle fixes du fournisseur :
@@ -123,6 +138,7 @@ Les pannes sont déclarées dans le scénario et évaluées à des points de con
 | `rate_limit` | chaque appel fournisseur (`on`, ou `any`) | `RATE_LIMITED` avec `retry_after_s` ; les appels pendant la fenêtre sont à nouveau refusés |
 | `mislabeled_refundable` | affichage | Remplace l'étiquette `refundable` dans `get_rates` |
 | `taxes_excluded` | affichage | Prix affichés hors taxes, `taxes_included: false` |
+| `policy_change` | `prebook` | Le tarif devient non remboursable ; le prebook renvoie `policy_changed: true, refundable: false`. Persistant pour ce tarif. |
 
 `where` restreint une panne à un hôtel, une chambre ou un plan. `occurrence` vaut `first` (défaut), `always` ou
 `n` (le n-ième appel concerné). Règle de comptage : le compteur d'une panne augmente une fois par appel qui atteint
@@ -357,7 +373,7 @@ Chemin de trace par défaut : `runs/<scénario>/<agent>-<horodatage UTC>.jsonl`.
 | `tests/scenarios` | Pour chaque scénario : bon agent à 100 avec rapport attendu figé, mauvais agent en échec sur ses critères ciblés, déterminisme et rejeu |
 | `tests/e2e` | Agent scripté → MCP Streamable HTTP → trace → rejeu → note sur tous les scénarios ; vrai binaire CLI en stdio et en HTTP |
 
-`pnpm test` lance tout (222 tests, quelques secondes).
+`pnpm test` lance tout (246 tests, quelques secondes).
 
 ## 13. Étendre StayBench
 

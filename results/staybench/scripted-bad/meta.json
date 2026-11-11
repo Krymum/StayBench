@@ -5,5 +5,5 @@
     "client": "staybench run --agent scripted-bad"
   },
   "date": "2026-11-10",
-  "staybench_version": "0.2.1"
+  "staybench_version": "0.2.2"
 }

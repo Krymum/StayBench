@@ -25,13 +25,15 @@ agent does not hammer a rate-limited API).
   agent that knows the real-world date would judge the stay to be in the past (found with Claude Code in 0.1).
 - **Realistic supplier semantics.** Search and rate results come from a cache and can be stale. The `refundable`
   flag in `get_rates` is a label; `get_cancellation_policy` is authoritative. Prices cover all the rooms requested
-  (`rooms`, default 1) for the whole stay. Some rates only have a few rooms left (`rooms_left`); asking for more
+  (`rooms`, default 1) for the whole stay. Some rates carry a mandatory fee paid at the hotel (`pay_at_property`,
+  shown at prebook, not included in `total_price`); a budget covers it. At prebook, the supplier may re-validate the
+  rate rules and change the cancellation terms (`policy_changed`). Some rates only have a few rooms left (`rooms_left`); asking for more
   fails with `NOT_ENOUGH_ROOMS`. `prebook` returns the final total, taxes included. `book` deduplicates `client_reference` unless a
   scenario disables it.
 - **Faults are declared in the scenario**: price change at prebook, sold out (between search and prebook, or
   between prebook and book), on-request (confirmed or rejected later), typed errors (optionally creating the
   booking anyway), no deduplication of client references, rate limit with Retry-After, mislabelled refundability,
-  taxes excluded from displayed prices. Once a price change or a sell-out has fired, it sticks for that rate.
+  taxes excluded from displayed prices, cancellation terms changed at prebook. Once a price change or a sell-out has fired, it sticks for that rate.
 
 ## The traveler
 

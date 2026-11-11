@@ -112,6 +112,7 @@ export function hotelFromSpec(spec: HotelSpec): Hotel {
           refundable: p.refundable,
           freeCancelDaysBefore: p.refundable ? (p.free_cancel_days_before ?? 1) : null,
           ...(p.available_rooms !== undefined ? { availableRooms: p.available_rooms } : {}),
+          ...(p.pay_at_property_per_night !== undefined ? { payAtPropertyPerNightMinor: Math.round(p.pay_at_property_per_night * 100) } : {}),
         })),
       };
     }),

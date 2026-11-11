@@ -105,6 +105,20 @@ Everything is re-exported from `src/index.ts`, so StayBench can also be used as 
 Displayed prices are **stale by design**: after a price change or a sell-out found at prebook, `search_hotels` and
 `get_rates` keep showing the old data, like a real supplier cache.
 
+### Multi-room
+
+`search_hotels` and `get_rates` take an optional `rooms` (default 1): identical rooms, with `adults` meaning adults
+per room. Prices cover all rooms, and the rate id gets a `~<rooms>` suffix for 2+ rooms. A rate plan may declare
+`available_rooms`: `get_rates` then shows `rooms_left`, and `prebook` and `book` fail with `NOT_ENOUGH_ROOMS` when
+fewer rooms are left than requested. The grader requires all rooms in one booking and flags a split stay. For a
+single room, ids and responses are unchanged, so earlier traces still replay.
+
+### Fees paid at the hotel
+
+A plan may declare `pay_at_property_per_night` (scenario field): prebook and the booking then show
+`pay_at_property: {amount, currency, description}`, not included in `total_price`. The grader adds it to the total
+when checking the budget.
+
 ### Fault engine
 
 Faults are declared in the scenario and evaluated at fixed check points inside the provider:
@@ -119,6 +133,7 @@ Faults are declared in the scenario and evaluated at fixed check points inside t
 | `rate_limit` | every provider call (`on`, or `any`) | `RATE_LIMITED` with `retry_after_s`; calls during the window are rejected again |
 | `mislabeled_refundable` | display | Overrides the `refundable` label in `get_rates` |
 | `taxes_excluded` | display | Displayed prices exclude taxes, `taxes_included: false` |
+| `policy_change` | `prebook` | The rate becomes non-refundable; prebook returns `policy_changed: true, refundable: false`. Sticky for the rate. |
 
 `where` narrows a fault to a hotel, room or plan. `occurrence` is `first` (default), `always` or `n` (the n-th
 matching call). Counting rule: a fault's counter increments once per call that reaches its check point and
@@ -348,7 +363,7 @@ Default trace path: `runs/<scenario>/<agent>-<UTC timestamp>.jsonl`.
 | `tests/scenarios` | For each scenario: good agent 100 with pinned report, bad agent fails its focus criteria, determinism and replay |
 | `tests/e2e` | Scripted agent → MCP Streamable HTTP → trace → replay → grade on all scenarios; real CLI binary over stdio and HTTP |
 
-`pnpm test` runs everything (222 tests, a few seconds).
+`pnpm test` runs everything (246 tests, a few seconds).
 
 ## 13. Extending StayBench
 

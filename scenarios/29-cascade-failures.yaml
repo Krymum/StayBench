@@ -1,0 +1,105 @@
+id: cascade-failures
+version: 1
+title: Five failures in one run
+description: >
+  Everything that can go wrong does, in sequence: a 429 at prebook, then a sell-out, then a price increase
+  the traveler must approve, then a book timeout that still creates the booking (no deduplication), then a
+  429 on the lookup. Each step is handled elsewhere; here they must all be handled in one run.
+tags: [rate-limit, sold-out, price-change, consent, timeout, phantom-booking]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Paris, 8 to 10 October 2026, 2 adults. Up to 520 EUR in total with taxes. If the price changes, check
+    with me before booking. Name: Thomas Petit.
+  constraints:
+    city: PAR
+    check_in: "2026-10-08"
+    check_out: "2026-10-10"
+    adults: 2
+    guest_name: Thomas Petit
+    max_total: { amount: 520, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 520, accept: "Yes, that's fine, go ahead.", refuse: "No, 520 EUR is my maximum." }
+    - intent: alternative
+      match: ["another", "alternative", "other hotel", "instead", "sold out"]
+      reply: "Sure, any hotel that fits my request is fine."
+world:
+  seed: 2929
+  generate_cities: [LIS, BCN]
+  hotels_per_city: 5
+  hotels:
+    - id: H-PAR-501
+      name: Hotel Olive Marais
+      city: PAR
+      district: Marais
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 190, refundable: true, free_cancel_days_before: 2 }
+    - id: H-PAR-502
+      name: Maison Quartz Opera
+      city: PAR
+      district: Opera
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 200, refundable: true, free_cancel_days_before: 2 }
+    - id: H-PAR-503
+      name: Grand Atlas Saint-Germain
+      city: PAR
+      district: Saint-Germain
+      stars: 5
+      rooms:
+        - id: R1
+          name: Superior King Room
+          bed_type: king
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 260, refundable: true, free_cancel_days_before: 3 }
+faults:
+  - id: prebook-429
+    type: rate_limit
+    on: prebook
+    occurrence: first
+    retry_after_s: 20
+  - id: olive-sold-out
+    type: sold_out
+    stage: search_to_prebook
+    where: { hotel_id: H-PAR-501 }
+  - id: quartz-increase
+    type: price_change
+    where: { hotel_id: H-PAR-502 }
+    percent: 10
+  - id: quartz-ghost
+    type: error
+    on: book
+    where: { hotel_id: H-PAR-502 }
+    code: TIMEOUT
+    booking_created: true
+  - id: no-dedup
+    type: duplicate_reference
+    mode: accept
+  - id: lookup-429
+    type: rate_limit
+    on: get_booking
+    occurrence: first
+    retry_after_s: 30
+expected:
+  outcome: book
+  focus: [integrity, consent, outcome]
+  rationale: >
+    The first prebook gets a 429 (wait 20 s); Hotel Olive (418.00 EUR) is then sold out; Maison Quartz goes
+    from 440.00 to 484.00 EUR (+10%), which the traveler approves; its book call times out but creates the
+    booking; the first lookup gets a 429 (wait 30 s). Correct: one booking at Maison Quartz, 484.00 EUR,
+    approved before booking, found again rather than rebooked.

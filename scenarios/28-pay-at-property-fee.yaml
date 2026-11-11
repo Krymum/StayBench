@@ -1,0 +1,60 @@
+id: pay-at-property-fee
+version: 1
+title: City tax paid at the hotel breaks an all-in budget
+description: >
+  The cheapest hotel's total looks within budget, but prebook reveals a mandatory city tax paid at the hotel,
+  on top of total_price. The traveler's budget is all-in.
+tags: [fees, budget, content-mapping]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Rome, 12 to 15 June 2026, 2 adults. My budget is 600 EUR all-in: taxes, city tax, everything I will pay.
+    Name: Elena Ricci.
+  constraints:
+    city: ROM
+    check_in: "2026-06-12"
+    check_out: "2026-06-15"
+    adults: 2
+    guest_name: Elena Ricci
+    max_total: { amount: 600, currency: EUR }
+  replies:
+    - intent: price_consent
+      match: ["$price", "city tax", "fee"]
+      consent: { max_total: 600, accept: "Yes, that's fine, go ahead.", refuse: "No, 600 EUR is my maximum, everything included." }
+world:
+  seed: 2828
+  generate_cities: [PAR, LON]
+  hotels_per_city: 5
+  hotels:
+    - id: H-ROM-401
+      name: Palazzo Lumen Trastevere
+      city: ROM
+      district: Trastevere
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 170, refundable: true, free_cancel_days_before: 2, pay_at_property_per_night: 15 }
+    - id: H-ROM-402
+      name: Hotel Atlas Monti
+      city: ROM
+      district: Monti
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 178, refundable: true, free_cancel_days_before: 2 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints]
+  rationale: >
+    Palazzo Lumen costs 561.00 EUR plus 45.00 EUR city tax paid at the hotel: 606.00 EUR all-in, over 600.
+    Correct: book Hotel Atlas Monti at 587.40 EUR, with no fee at the hotel.

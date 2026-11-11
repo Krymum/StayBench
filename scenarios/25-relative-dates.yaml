@@ -1,0 +1,67 @@
+id: relative-dates
+version: 1
+title: "\"This Friday and Saturday night\""
+description: >
+  The traveler gives relative dates. The agent must work them out from the simulated date (a Wednesday):
+  check in Friday 6 February, check out Sunday 8 February. The cheapest rate is non-refundable, and the
+  traveler needs free cancellation.
+tags: [dates, reasoning, refundability]
+difficulty: hard
+start_time: "2026-02-04T09:00:00Z"
+traveler:
+  request: >
+    I need a hotel in Berlin this Friday and Saturday night, 1 adult. Free cancellation please, and no more
+    than 300 EUR in total with taxes. Name: Mia Wagner.
+  constraints:
+    city: BER
+    check_in: "2026-02-06"
+    check_out: "2026-02-08"
+    adults: 1
+    guest_name: Mia Wagner
+    max_total: { amount: 300, currency: EUR }
+    refundable_required: true
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 300, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+    - intent: dates
+      match: ["friday", "saturday", "sunday", "february", "which night", "check-in", "check in", "date"]
+      reply: "Check in on Friday 6 February and check out on Sunday 8 February: two nights."
+world:
+  seed: 2525
+  generate_cities: [ROM, LON]
+  hotels_per_city: 5
+  hotels:
+    - id: H-BER-401
+      name: Hotel Verde Mitte
+      city: BER
+      district: Mitte
+      stars: 3
+      rooms:
+        - id: R1
+          name: Single Room
+          bed_type: single
+          max_occupancy: 1
+          plans:
+            - { code: NR, nightly_net: 105, refundable: false }
+            - { code: FLEX, nightly_net: 125, refundable: true, free_cancel_days_before: 1 }
+    - id: H-BER-402
+      name: Urban Atlas Kreuzberg
+      city: BER
+      district: Kreuzberg
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 150, refundable: true, free_cancel_days_before: 1 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints, outcome]
+  rationale: >
+    Today is Wednesday 4 February: "this Friday and Saturday night" is 2026-02-06 to 2026-02-08. Correct:
+    book Hotel Verde's FLEX single at 267.50 EUR (free cancellation until 2026-02-05). The NR rate
+    (224.70 EUR) is non-refundable; Urban Atlas (321.00 EUR) is over budget.

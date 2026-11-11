@@ -86,8 +86,9 @@ export function constraintViolations(b: BookingRecord, c: Constraints, session: 
   if (c.max_total) {
     const max = Math.round(c.max_total.amount * 100);
     if (b.currency !== c.max_total.currency) out.push(`booked in ${b.currency}, budget is in ${c.max_total.currency}`);
-    else if (b.total_minor > max) {
-      out.push(`over budget: ${fmt(b.total_minor, b.currency)} taxes included, budget ${fmt(max, b.currency)}`);
+    else if (b.total_minor + b.pay_at_property_minor > max) {
+      const fees = b.pay_at_property_minor > 0 ? ` + ${fmt(b.pay_at_property_minor, b.currency)} paid at the hotel` : "";
+      out.push(`over budget: ${fmt(b.total_minor, b.currency)} taxes included${fees}, budget ${fmt(max, b.currency)}`);
     }
   }
   if (c.refundable_required && !b.refundable) out.push("non-refundable rate booked although the traveler required a refundable one");

@@ -98,6 +98,13 @@ export interface TaxesExcludedFault extends FaultBase {
   where?: Where;
 }
 
+/** At prebook, the rate's cancellation terms change to non-refundable. Sticky for the rate. */
+export interface PolicyChangeFault extends FaultBase {
+  type: "policy_change";
+  where?: Where;
+  occurrence?: Occurrence;
+}
+
 export type FaultSpec =
   | PriceChangeFault
   | SoldOutFault
@@ -106,7 +113,8 @@ export type FaultSpec =
   | DuplicateReferenceFault
   | RateLimitFault
   | MislabeledRefundableFault
-  | TaxesExcludedFault;
+  | TaxesExcludedFault
+  | PolicyChangeFault;
 
 export type FaultType = FaultSpec["type"];
 

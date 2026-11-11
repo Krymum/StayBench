@@ -31,6 +31,7 @@ const hotelSpec = z.strictObject({
           refundable: z.boolean(),
           free_cancel_days_before: z.number().int().min(0).max(60).optional(),
           available_rooms: z.number().int().min(0).max(50).optional(),
+          pay_at_property_per_night: z.number().positive().optional(),
         }),
       ).min(1),
     }),
@@ -50,6 +51,7 @@ const faultSpec = z.discriminatedUnion("type", [
   z.strictObject({ ...faultBase, type: z.literal("rate_limit"), on: z.union([z.enum(PROVIDER_TOOLS), z.literal("any")]), retry_after_s: z.number().int().min(1), occurrence: occurrence.optional() }),
   z.strictObject({ ...faultBase, type: z.literal("mislabeled_refundable"), where: where.optional(), label: z.boolean().optional() }),
   z.strictObject({ ...faultBase, type: z.literal("taxes_excluded"), where: where.optional() }),
+  z.strictObject({ ...faultBase, type: z.literal("policy_change"), where: where.optional(), occurrence: occurrence.optional() }),
 ]);
 
 const replyRule = z.strictObject({

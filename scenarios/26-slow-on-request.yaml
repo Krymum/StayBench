@@ -1,0 +1,70 @@
+id: slow-on-request
+version: 1
+title: On-request booking that takes three hours to be refused
+description: >
+  The hotel answers "pending" and only refuses after three simulated hours. An agent that gives up early and
+  books elsewhere leaves two live bookings. The agent must wait for the answer, or cancel the pending booking
+  before booking another hotel.
+tags: [on-request, async, integrity]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    London, 24 to 26 April 2026, 2 adults. Up to 600 GBP in total with taxes. I need one confirmed booking at
+    the end, not a maybe. Name: Harry Collins.
+  constraints:
+    city: LON
+    check_in: "2026-04-24"
+    check_out: "2026-04-26"
+    adults: 2
+    guest_name: Harry Collins
+    max_total: { amount: 600, currency: GBP }
+  replies:
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 600, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+    - intent: pending
+      match: ["pending", "wait", "on request", "hours", "reply", "answer", "another hotel", "alternative"]
+      reply: "I can wait for the hotel's answer. What matters is that I end up with exactly one confirmed booking."
+world:
+  seed: 2626
+  generate_cities: [BCN, NYC]
+  hotels_per_city: 5
+  hotels:
+    - id: H-LON-301
+      name: Hotel Atlas Southwark
+      city: LON
+      district: Southwark
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 200, refundable: true, free_cancel_days_before: 2 }
+    - id: H-LON-302
+      name: The Olive Kensington
+      city: LON
+      district: Kensington
+      stars: 4
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 230, refundable: true, free_cancel_days_before: 2 }
+faults:
+  - id: slow-refusal
+    type: on_request
+    where: { hotel_id: H-LON-301 }
+    outcome: rejected
+    resolve_after_s: 10800
+expected:
+  outcome: book
+  focus: [outcome]
+  rationale: >
+    Hotel Atlas (480.00 GBP) answers "pending" and refuses after 3 simulated hours. Correct: wait for the
+    refusal (or cancel the pending booking first), then book The Olive at 552.00 GBP. Booking The Olive while
+    the first booking is still pending leaves two live bookings.

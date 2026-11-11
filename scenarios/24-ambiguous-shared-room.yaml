@@ -1,0 +1,71 @@
+id: ambiguous-shared-room
+version: 1
+title: Shared room with a colleague, bed type unstated
+description: >
+  The traveler shares a room with a colleague but never says which beds they need. The cheapest room has a
+  double bed. A careful agent asks before booking; the traveler wants two separate beds.
+tags: [clarification, room-type, constraints]
+difficulty: hard
+start_time: "2026-02-01T09:00:00Z"
+traveler:
+  request: >
+    Zurich, 14 to 16 April 2026. I'm travelling with a colleague and we'll share a room to save on costs.
+    Up to 650 CHF in total, taxes included. Name: Jonas Keller.
+  constraints:
+    city: ZRH
+    check_in: "2026-04-14"
+    check_out: "2026-04-16"
+    adults: 2
+    guest_name: Jonas Keller
+    max_total: { amount: 650, currency: CHF }
+    bed_type: twin
+  replies:
+    - intent: bed_type
+      match: ["bed", "twin", "double", "king", "lit", "separate", "sleep"]
+      reply: "Two separate beds, please. We're colleagues."
+    - intent: price_consent
+      match: ["$price"]
+      consent: { max_total: 650, accept: "Yes, that's fine, go ahead.", refuse: "No, that's above my budget." }
+world:
+  seed: 2424
+  generate_cities: [LIS, PAR]
+  hotels_per_city: 5
+  hotels:
+    - id: H-ZRH-201
+      name: Hotel Quartz Enge
+      city: ZRH
+      district: Enge
+      stars: 3
+      rooms:
+        - id: R1
+          name: Standard Double Room
+          bed_type: double
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 230, refundable: true, free_cancel_days_before: 2 }
+        - id: R2
+          name: Standard Twin Room
+          bed_type: twin
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 250, refundable: true, free_cancel_days_before: 2 }
+    - id: H-ZRH-202
+      name: Residence Lumen Seefeld
+      city: ZRH
+      district: Seefeld
+      stars: 4
+      rooms:
+        - id: R1
+          name: Superior King Room
+          bed_type: king
+          max_occupancy: 2
+          plans:
+            - { code: FLEX, nightly_net: 270, refundable: true, free_cancel_days_before: 2 }
+faults: []
+expected:
+  outcome: book
+  focus: [constraints]
+  rationale: >
+    The request does not say which beds; asked, the traveler wants two separate beds. Correct: book the
+    Standard Twin Room at Hotel Quartz, 540.00 CHF. The cheaper double room (496.80 CHF) and the king room
+    are wrong.

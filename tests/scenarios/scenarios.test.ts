@@ -33,19 +33,25 @@ const EXPECTED_REPORTS: Record<string, { total_price: number | null; currency: s
   "all-sold-out": { total_price: null, currency: null, deadline: null },
   "two-rooms-family": { total_price: 636, currency: "EUR", deadline: "2026-07-01T00:00:00.000Z" },
   "last-room-available": { total_price: 836, currency: "EUR", deadline: "2026-09-16T00:00:00.000Z" },
+  "ambiguous-shared-room": { total_price: 540, currency: "CHF", deadline: "2026-04-12T00:00:00.000Z" },
+  "relative-dates": { total_price: 267.5, currency: "EUR", deadline: "2026-02-05T00:00:00.000Z" },
+  "slow-on-request": { total_price: 552, currency: "GBP", deadline: "2026-04-22T00:00:00.000Z" },
+  "policy-change-at-prebook": { total_price: 440, currency: "EUR", deadline: "2026-05-20T00:00:00.000Z" },
+  "pay-at-property-fee": { total_price: 587.4, currency: "EUR", deadline: "2026-06-10T00:00:00.000Z" },
+  "cascade-failures": { total_price: 484, currency: "EUR", deadline: "2026-10-06T00:00:00.000Z" },
 };
 
 describe("scenario catalog", () => {
-  it("has 23 scenarios with unique ids, each with an expected report", () => {
-    expect(scenarios).toHaveLength(23);
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(23);
+  it("has 29 scenarios with unique ids, each with an expected report", () => {
+    expect(scenarios).toHaveLength(29);
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(29);
     expect(Object.keys(EXPECTED_REPORTS).sort()).toEqual(scenarios.map((s) => s.id).sort());
   });
 
   it("covers every fault type", () => {
     const types = new Set(scenarios.flatMap((s) => s.faults.map((f) => f.type)));
     expect([...types].sort()).toEqual(
-      ["duplicate_reference", "error", "mislabeled_refundable", "on_request", "price_change", "rate_limit", "sold_out", "taxes_excluded"],
+      ["duplicate_reference", "error", "mislabeled_refundable", "on_request", "policy_change", "price_change", "rate_limit", "sold_out", "taxes_excluded"],
     );
   });
 });

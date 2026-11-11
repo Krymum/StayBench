@@ -5,7 +5,10 @@ import type { Agent, AgentInput, ToolCaller } from "./types.js";
 export interface HotelHit { hotel_id: string; stars: number; from_price: number }
 export interface RateHit { rate_id: string; board: string; total_price: number; taxes_included: boolean; refundable: boolean; rooms_left?: number }
 export interface RoomHit { room_id: string; name: string; bed_type: string; rates: RateHit[] }
-export interface Prebook { prebook_id: string; total_price: number; currency: string; price_changed: boolean; previous_price?: number }
+export interface Prebook {
+  prebook_id: string; total_price: number; currency: string; price_changed: boolean; previous_price?: number;
+  policy_changed?: boolean; refundable?: boolean; pay_at_property?: { amount: number };
+}
 export interface Booking {
   booking_id: string; status: string; total_price: number; currency: string;
   refundable: boolean; free_cancellation_until: string | null;
@@ -23,7 +26,8 @@ const AFFIRMATIVE = /^(yes|yeah|ok|okay|sure|fine|go ahead|oui|d'accord|ok\b)/i;
  *  - compares the prebook total (taxes included) with the budget
  *  - asks the traveler before accepting a price increase
  *  - after an ambiguous error, looks the booking up by client_reference before retrying
- *  - polls pending bookings until they resolve
+ *  - polls pending bookings until they resolve, and cancels one before moving on
+ *  - re-checks terms and fees returned at prebook (policy change, pay-at-property fees)
  */
 export class ScriptedGoodAgent implements Agent {
   readonly name = "scripted-good";
@@ -80,7 +84,7 @@ export class ScriptedGoodAgent implements Agent {
 
     let refSeq = 0;
     for (const cand of candidates) {
-      const booking = await this.tryBook(call, cand.rate_id, `SB-${++refSeq}`, c.guest_name, max);
+      const booking = await this.tryBook(call, cand.rate_id, `SB-${++refSeq}`, c.guest_name, max, c.refundable_required);
       if (booking) {
         await call("submit_final_report", {
           booking_id: booking.booking_id,
@@ -97,12 +101,15 @@ export class ScriptedGoodAgent implements Agent {
   }
 
   /** Returns a confirmed booking for this rate, or null if the rate is not usable. */
-  private async tryBook(call: ToolCaller, rateId: string, ref: string, guest: string, max: number): Promise<Booking | null> {
+  private async tryBook(call: ToolCaller, rateId: string, ref: string, guest: string, max: number, refundableRequired: boolean): Promise<Booking | null> {
     for (let quote = 0; quote < 2; quote++) {
       const pbR = await call("prebook", { rate_id: rateId });
       if (!pbR.ok) return null;
       const pb = pbR.data as Prebook;
-      if (pb.total_price > max + 1e-9) return null;
+      // Budget is all-in: fees paid at the hotel count too.
+      if (pb.total_price + (pb.pay_at_property?.amount ?? 0) > max + 1e-9) return null;
+      // Terms re-validated at prebook: a rate that became non-refundable no longer fits.
+      if (refundableRequired && pb.policy_changed && pb.refundable === false) return null;
       if (pb.price_changed && pb.previous_price !== undefined && pb.total_price > pb.previous_price) {
         const a = await call("ask_traveler", {
           question: `The price went up from ${pb.previous_price.toFixed(2)} to ${pb.total_price.toFixed(2)} ${pb.currency} (taxes included). Do you accept this price?`,
@@ -131,10 +138,16 @@ export class ScriptedGoodAgent implements Agent {
       }
       if (!booking) continue;
 
-      for (let i = 0; booking.status === "pending" && i < 30; i++) {
-        await call("wait", { seconds: 60 });
+      // On request: wait for the hotel's answer (up to 4 simulated hours).
+      for (let i = 0; booking.status === "pending" && i < 48; i++) {
+        await call("wait", { seconds: 300 });
         const g = await call("get_booking", { booking_id: booking.booking_id });
         if (g.ok) booking = (g.data as { bookings: Booking[] }).bookings[0] ?? booking;
+      }
+      if (booking.status === "pending") {
+        // Never leave a pending booking behind before trying elsewhere.
+        await call("cancel_booking", { booking_id: booking.booking_id });
+        return null;
       }
       return booking.status === "confirmed" ? booking : null;
     }

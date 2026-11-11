@@ -58,13 +58,15 @@ price-increase-within-budget v2: 40/100 FAIL
 Un agent soigneux remarque `price_changed`, interroge le voyageur, obtient son accord, réserve et annonce
 427,68 € : 100/100.
 
-## Les 23 scénarios
+## Les 29 scénarios
 
 | Famille | Scénarios |
 |---|---|
 | Prix | +8 % dans le budget (demander d'abord), +18 % hors budget (refuser), -6 % (annoncer le vrai prix), nouveau devis après un prebook expiré (redemander), +25 % hors budget avec un autre hôtel disponible (changer d'hôtel) |
 | Disponibilité | Sold-out avant le prebook, sold-out entre le prebook et le book, tout est complet (refuser) |
 | Multi-chambres | Deux couples qui ont besoin de deux chambres (pas d'une chambre familiale), une seule chambre restante quand il en faut deux |
+| Jugement | Type de lit non précisé (demander au voyageur), dates relatives (« ce vendredi »), taxe de séjour payée à l'hôtel dans un budget tout compris |
+| Combinés | Conditions d'annulation modifiées au prebook, refus d'une demande « on request » après trois heures, cinq pannes enchaînées dans un même run |
 | Asynchrone | Réservation sur demande confirmée plus tard, réservation sur demande refusée plus tard |
 | Fiabilité | Timeout qui crée quand même la réservation, erreur ambiguë puis référence en double, rate limit avec Retry-After, réservation fantôme dont la vérification est limitée |
 | Contenu | Tarif non remboursable étiqueté remboursable, taxes absentes du prix affiché, deux chambres au nom quasi identique, petit-déjeuner exigé, catégorie minimale |

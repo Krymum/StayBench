@@ -16,6 +16,8 @@ export interface RatePlan {
   freeCancelDaysBefore: number | null;
   /** Rooms the supplier can still sell at this plan. Undefined = not limited. */
   availableRooms?: number;
+  /** Mandatory fee paid at the hotel, per room per night, in minor units (e.g. city tax). */
+  payAtPropertyPerNightMinor?: number;
 }
 
 export interface Room {
@@ -67,6 +69,8 @@ export interface HotelSpec {
       free_cancel_days_before?: number;
       /** Rooms still sellable at this plan; omit for unlimited. */
       available_rooms?: number;
+      /** Mandatory fee paid at the hotel, per room per night, in major units. */
+      pay_at_property_per_night?: number;
     }>;
   }>;
 }
