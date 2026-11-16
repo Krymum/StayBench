@@ -46,6 +46,44 @@ describe("CLI commands (in-process)", () => {
     expect(graded.mismatches).toEqual([]);
   });
 
+  it("run --agent claude-code drives the CLI over MCP and writes a leaderboard submission", async () => {
+    const out = tmp();
+    const record = join(tmp(), "record.json");
+    process.env.FAKE_CLAUDE_RECORD = record;
+    try {
+      const io = capture();
+      const { results } = await cmdRun(
+        { agent: "claude-code", scenario: "happy-path", out, submitter: "someone", claudeCommand: [process.execPath, join(process.cwd(), "tests", "fixtures", "fake-claude.mjs")] },
+        io,
+      );
+      expect(io.stderr.join("\n")).toContain("Using 9.9.9 (Fake Claude Code)");
+      expect(io.stderr.join("\n")).toContain("fake agent done");
+      // The fake declined: the run is graded like any other.
+      expect(results[0]!.trace).toBe(join(out, "happy-path.jsonl"));
+      expect(results[0]!.passed).toBe(false);
+
+      const r = JSON.parse(readFileSync(record, "utf8"));
+      expect(r.args).toEqual(expect.arrayContaining(["-p", "--strict-mcp-config", "--allowedTools", "mcp__staybench"]));
+      expect(r.args[r.args.indexOf("--disallowedTools") + 1]).toContain("Read");
+      expect(r.prompt).toContain("You are a hotel booking agent");
+      expect(r.prompt).toContain("Ana Silva");
+      expect(r.tools).toContain("submit_final_report");
+      expect(r.cwd).not.toContain(process.cwd()); // runs outside the repository
+
+      const meta = JSON.parse(readFileSync(join(out, "meta.json"), "utf8"));
+      expect(meta.submitter).toBe("someone");
+      expect(meta.agent.name).toBe("Claude Code");
+      expect(readdirSync(out).sort()).toEqual(["happy-path.jsonl", "meta.json"]);
+    } finally {
+      delete process.env.FAKE_CLAUDE_RECORD;
+    }
+  }, 60_000);
+
+  it("run --agent claude-code fails early when the CLI is missing", async () => {
+    await expect(cmdRun({ agent: "claude-code", scenario: "happy-path", out: tmp(), claudeCommand: ["staybench-no-such-claude"] }, capture()))
+      .rejects.toThrow(/Claude Code CLI not found/);
+  });
+
   it("grade returns exit code 2 on a tampered trace", async () => {
     const io = capture();
     const { results } = await cmdRun({ agent: "scripted-good", scenario: "happy-path", out: tmp() }, io);
@@ -56,11 +94,26 @@ describe("CLI commands (in-process)", () => {
     expect(g.stdout[0]).toMatch(/trace inconsistent/);
   });
 
-  it("run --all summarizes the average", async () => {
+  it("run --all prints a per-scenario table and the average", async () => {
     const io = capture();
     const { results } = await cmdRun({ agent: "scripted-good", all: true, out: tmp() }, io);
     expect(results).toHaveLength(N);
-    expect(io.stdout.at(-1)).toBe(`\nAverage: 100.0/100, passed ${N}/${N}`);
+    expect(io.stdout).toContain(`\nAverage: 100.0/100, passed ${N}/${N}`);
+    expect(io.stdout.some((l) => /^happy-path\s+100\.0  PASS$/.test(l))).toBe(true);
+    expect(io.stdout.at(-1)).toMatch(/Add --submitter/);
+  });
+
+  it("run --submitter defaults to results/<submitter>/<agent>, one trace per scenario", async () => {
+    const cwd = process.cwd();
+    const dir = tmp();
+    process.chdir(dir);
+    try {
+      const { results } = await cmdRun({ agent: "scripted-good", scenario: "happy-path", submitter: "Bob" }, capture());
+      expect(results[0]!.trace).toBe(join("results", "bob", "scripted-good", "happy-path.jsonl"));
+      expect(readdirSync(join(dir, "results", "bob", "scripted-good")).sort()).toEqual(["happy-path.jsonl", "meta.json"]);
+    } finally {
+      process.chdir(cwd);
+    }
   });
 
   it("validates agent options", async () => {

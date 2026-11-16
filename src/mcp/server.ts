@@ -78,7 +78,10 @@ export async function serveSessionHttp(session: RunSession, opts: { port?: numbe
     void nodeHandler(req, res);
   });
   await new Promise<void>((resolve, reject) => {
-    http.once("error", reject);
+    http.once("error", (e: NodeJS.ErrnoException) =>
+      reject(e.code === "EADDRINUSE"
+        ? new Error(`Port ${opts.port} is already in use: another StayBench server is probably still running. Stop it (Ctrl+C) or pass --port <n>.`)
+        : e));
     http.listen(opts.port ?? 0, host, () => resolve());
   });
   const { port } = http.address() as AddressInfo;

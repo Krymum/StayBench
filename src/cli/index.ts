@@ -19,17 +19,25 @@ Usage:
 
   staybench run --agent <${AGENTS.join("|")}> (--scenario <id> | --all)
                 [--base-url <url>] [--model <name>] [--api-key <key>]
-                [--max-turns 40] [--out runs] [--json]
-      Run an agent automatically. local-openai talks to any OpenAI-compatible
-      endpoint, e.g. Ollama: --base-url http://localhost:11434/v1 --model qwen3:8b
+                [--max-turns <n>] [--out <dir>] [--json]
+      Run an agent automatically and print the grades.
+      claude-code runs your installed Claude Code CLI (claude -p), one fresh
+      session per scenario, with only the StayBench tools. Nothing to start by hand.
+      local-openai talks to any OpenAI-compatible endpoint, e.g. Ollama:
+      --base-url http://localhost:11434/v1 --model qwen3:8b
 
   staybench verify [results-dir] [--out leaderboard.json] [--json] [--allow-invalid]
       Verify leaderboard submissions: replay every trace, check it matches the
       current scenario version, recompute scores. Exit code 1 if any is invalid,
       unless --allow-invalid (used to build the site: invalid entries are shown as such).
 
-  Add --submitter <github-handle> [--name "<display name>"] to "run" to write
-  the meta.json of a leaderboard submission into --out.
+  Add --submitter <github-handle> [--name "<display name>"] to "run" to write a
+  leaderboard submission (one <scenario>.jsonl per scenario + meta.json) into
+  --out, by default results/<github-handle>/<name>. Then: pnpm site:dev
+
+Quick start with Claude Code:
+  staybench run --agent claude-code --all --submitter <github-handle>
+  pnpm site:dev     (open http://localhost:4321/StayBench/)
 
 Common options:
   --scenarios-dir <dir>   Use scenarios from another directory.
@@ -114,7 +122,7 @@ async function main(argv: string[]): Promise<number> {
         ...(values.model ? { model: values.model } : {}),
         ...(values["api-key"] ? { apiKey: values["api-key"] } : {}),
         ...(values["max-turns"] ? { maxTurns: Number(values["max-turns"]) } : {}),
-        out: values.out ?? "runs",
+        ...(values.out ? { out: values.out } : {}),
         json: values.json,
         ...(values.submitter ? { submitter: values.submitter } : {}),
         ...(values.name ? { displayName: values.name } : {}),

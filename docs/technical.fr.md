@@ -327,6 +327,14 @@ Poids, plafonds et règles exactes : [METHODOLOGY.md](../METHODOLOGY.md#scoring)
 - `OpenAICompatibleAgent` : boucle Chat Completions avec des `tools` générés depuis les mêmes schémas Zod
   (`z.toJSONSchema`), `temperature: 0`, 40 tours maximum, 2 relances si le modèle cesse d'appeler des outils.
   Accepte les arguments sous forme de chaîne JSON ou d'objet (Ollama). Le modèle ne reçoit que le texte de la demande.
+- `runClaudeCode(scenario, opts)` (`src/agents/claude-code.ts`) n'est pas un `Agent` : Claude Code est un client MCP
+  externe. La fonction sert la session en Streamable HTTP sur un port libre, écrit un `mcp.json` dans un dossier
+  temporaire neuf et y lance `claude -p --mcp-config mcp.json --strict-mcp-config --allowedTools mcp__staybench
+  --disallowedTools <outils intégrés>`, avec sur stdin le prompt `CLAUDE_CODE_PROMPT` suivi de la demande. Le run
+  se termine quand le processus s'arrête (délai maximal 15 min). `checkClaudeCode()` lance d'abord
+  `claude --version` : une CLI absente échoue avant le premier scénario. L'exécutable est `claude`, ou
+  `$STAYBENCH_CLAUDE_BIN`. Sous Windows, il passe par le shell (npm installe un raccourci `.cmd`). Les tests
+  utilisent une fausse CLI, `tests/fixtures/fake-claude.mjs`.
 
 ## 10. Référence de la CLI
 
@@ -335,10 +343,14 @@ Poids, plafonds et règles exactes : [METHODOLOGY.md](../METHODOLOGY.md#scoring)
 | `staybench list [--json]` | Catalogue des scénarios |
 | `staybench serve --scenario <id> [--transport stdio\|http] [--port 3333] [--trace <fichier>]` | Serveur MCP pour un run ; affiche la demande puis, à la fin, la note |
 | `staybench grade <trace.jsonl> [--json]` | Rejoue et note une trace. Code de sortie 0 notée, 2 incohérente, 1 erreur |
-| `staybench run --agent <local-openai\|scripted-good\|scripted-bad> (--scenario <id> \| --all) [--base-url] [--model] [--api-key] [--max-turns 40] [--out runs] [--submitter <pseudo> --name "<nom affiché>"] [--json]` | Runs automatiques ; avec `--submitter`, `--out` devient une soumission au classement |
+| `staybench run --agent <claude-code\|local-openai\|scripted-good\|scripted-bad> (--scenario <id> \| --all) [--base-url] [--model] [--api-key] [--max-turns <n>] [--out <dossier>] [--submitter <pseudo> --name "<nom affiché>"] [--json]` | Runs automatiques, puis un tableau des notes ; avec `--submitter`, le dossier de sortie est une soumission au classement |
 | `staybench verify [results] [--out <fichier>] [--json] [--allow-invalid]` | Vérifie les soumissions et produit le JSON du classement. Code de sortie 1 si l'une est invalide, sauf avec `--allow-invalid` |
 
-Chemin de trace par défaut : `runs/<scénario>/<agent>-<horodatage UTC>.jsonl`.
+Chemins de trace de `run` : sans `--submitter`, `<out>/<scénario>/<agent>-<horodatage UTC>.jsonl` avec `out` =
+`runs` ; avec `--submitter`, `<out>/<scénario>.jsonl` (écrasé si on relance, une soumission n'ayant qu'une trace
+par scénario) avec `out` = `results/<pseudo>/<--name en minuscules et tirets, ou agent[-modèle]>`. `--max-turns`
+vaut 40 par défaut pour `local-openai` et 80 pour `claude-code`. `serve --transport http` signale clairement un port
+déjà occupé.
 
 ## 11. Chaîne du classement
 

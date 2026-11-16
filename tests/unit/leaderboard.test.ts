@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+﻿import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -64,7 +64,7 @@ describe("leaderboard verification", () => {
     const lb = buildLeaderboard(join(root, "bob"));
     const byId = Object.fromEntries(lb.entries.map((e) => [e.id, e]));
     expect(byId["tampered"]).toMatchObject({ status: "invalid", coverage: N - 1 });
-    expect(byId["tampered"]!.errors[0]).toMatch(/happy-path\/.*: replay mismatch at call \d+ \(get_rates, result\)/);
+    expect(byId["tampered"]!.errors[0]).toMatch(/happy-path.*: replay mismatch at call \d+ \(get_rates, result\)/);
     expect(byId["partial"]).toMatchObject({ status: "incomplete", coverage: N - 5, score: Math.round(((N - 5) / N) * 1000) / 10 });
     expect(byId["dup"]!.errors[0]).toMatch(/more than one trace/);
     expect(byId["nometa/x"]!.errors).toContain("meta.json is not valid JSON");

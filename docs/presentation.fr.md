@@ -114,6 +114,10 @@ masquer en faisant tout le reste correctement.
 git clone https://github.com/Krymum/StayBench.git && cd StayBench
 pnpm install && pnpm build
 node dist/cli/index.js run --agent scripted-bad --scenario price-increase-within-budget
+node dist/cli/index.js run --agent claude-code --all --submitter <votre-pseudo-github>   # Claude Code, tous les scénarios
+pnpm site:dev                                                                             # voir les résultats
 ```
 
-Ensuite, branchez votre propre agent : voir le [README](../README.md#test-your-agent).
+La deuxième commande lance Claude Code sur chaque scénario, sans serveur à démarrer ni demande à copier, et range
+les résultats dans `results/` ; la troisième affiche le classement sur http://localhost:4321/StayBench/. Pour les
+autres agents : voir le [README](../README.md#test-any-mcp-agent-interactively).

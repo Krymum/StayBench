@@ -318,6 +318,13 @@ Weights, caps and the exact rules are documented in [METHODOLOGY.md](../METHODOL
 - `OpenAICompatibleAgent`: Chat Completions loop with `tools` generated from the same Zod schemas
   (`z.toJSONSchema`), `temperature: 0`, 40 turns max, 2 nudges if the model stops calling tools. Accepts tool
   arguments as a JSON string or an object (Ollama). The model gets the request text only.
+- `runClaudeCode(scenario, opts)` (`src/agents/claude-code.ts`) is not an `Agent`: Claude Code is an external MCP
+  client. It serves the session over Streamable HTTP on a free port, writes an `mcp.json` in a fresh temporary
+  directory, and runs `claude -p --mcp-config mcp.json --strict-mcp-config --allowedTools mcp__staybench
+  --disallowedTools <built-ins>` there, with the prompt `CLAUDE_CODE_PROMPT` + the request on stdin. The run ends
+  when the process exits (15 min timeout). `checkClaudeCode()` runs `claude --version` first, so a missing CLI fails
+  before any scenario. The executable is `claude`, or `$STAYBENCH_CLAUDE_BIN`. On Windows it goes through the shell
+  (npm installs a `.cmd` shim). Tests use a fake CLI, `tests/fixtures/fake-claude.mjs`.
 
 ## 10. CLI reference
 
@@ -326,10 +333,13 @@ Weights, caps and the exact rules are documented in [METHODOLOGY.md](../METHODOL
 | `staybench list [--json]` | Scenario catalog |
 | `staybench serve --scenario <id> [--transport stdio\|http] [--port 3333] [--trace <file>]` | MCP server for one run; prints the request and, at the end, the grade |
 | `staybench grade <trace.jsonl> [--json]` | Replay and grade a trace. Exit code 0 graded, 2 inconsistent, 1 error |
-| `staybench run --agent <local-openai\|scripted-good\|scripted-bad> (--scenario <id> \| --all) [--base-url] [--model] [--api-key] [--max-turns 40] [--out runs] [--submitter <handle> --name "<display>"] [--json]` | Automatic runs; with `--submitter`, `--out` becomes a leaderboard submission |
+| `staybench run --agent <claude-code\|local-openai\|scripted-good\|scripted-bad> (--scenario <id> \| --all) [--base-url] [--model] [--api-key] [--max-turns <n>] [--out <dir>] [--submitter <handle> --name "<display>"] [--json]` | Automatic runs, then a score table; with `--submitter`, the output directory is a leaderboard submission |
 | `staybench verify [results] [--out <file>] [--json] [--allow-invalid]` | Verify submissions and build the leaderboard JSON. Exit code 1 if any is invalid, unless `--allow-invalid` |
 
-Default trace path: `runs/<scenario>/<agent>-<UTC timestamp>.jsonl`.
+Trace paths of `run`: without `--submitter`, `<out>/<scenario>/<agent>-<UTC timestamp>.jsonl` with `out` = `runs`;
+with `--submitter`, `<out>/<scenario>.jsonl` (overwritten on re-run, since a submission holds one trace per
+scenario) with `out` = `results/<handle>/<slug of --name, or agent[-model]>`. `--max-turns` defaults to 40 for
+`local-openai` and 80 for `claude-code`. `serve --transport http` reports a busy port with a clear message.
 
 ## 11. Leaderboard pipeline
 

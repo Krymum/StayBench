@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { buildLeaderboard, submissionMetaSchema, type SubmissionMeta } from "../leaderboard/verify.js";
 import { STAYBENCH_VERSION } from "../version.js";
+import { checkClaudeCode, CLAUDE_CODE_PROMPT, runClaudeCode } from "../agents/claude-code.js";
 import { OpenAICompatibleAgent } from "../agents/openai-compatible.js";
 import { runAgent } from "../agents/run-local.js";
 import { ScriptedBadAgent } from "../agents/scripted-bad.js";
@@ -27,6 +28,11 @@ export const defaultIo: Io = {
 
 function stamp(): string {
   return new Date().toISOString().replace(/[-:]/g, "").replace(/\..+$/, "").replace("T", "-");
+}
+
+/** Lower-case, dash-separated version of a name, safe as a directory name. */
+export function slug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "run";
 }
 
 export function defaultTracePath(scenarioId: string, agent: string, dir = "runs"): string {
@@ -83,6 +89,8 @@ export async function cmdServe(opts: ServeOptions, io: Io = defaultIo): Promise<
   if (opts.transport === "http") {
     const http = await serveSessionHttp(session, { port: opts.port });
     io.err(`MCP endpoint (Streamable HTTP): ${http.url}`);
+    io.err("Connect your agent now (in Claude Code: /mcp to reconnect), then give it the request above.");
+    io.err("To run every scenario automatically instead: staybench run --agent claude-code --all");
     io.err("Press Ctrl+C to stop.");
     close = () => http.close();
   } else {
@@ -123,15 +131,18 @@ export interface RunOptions {
   model?: string;
   apiKey?: string;
   maxTurns?: number;
-  out: string;
+  /** Output directory. Default: runs, or results/<submitter>/<agent> with --submitter. */
+  out?: string;
   /** When set, also writes <out>/meta.json so the output directory is a leaderboard submission. */
   submitter?: string;
   displayName?: string;
   json?: boolean;
   scenariosDir?: string;
+  /** claude-code only: command line that replaces "claude" (tests use a fake). */
+  claudeCommand?: [string, ...string[]];
 }
 
-export const AGENTS = ["local-openai", "scripted-good", "scripted-bad"] as const;
+export const AGENTS = ["claude-code", "local-openai", "scripted-good", "scripted-bad"] as const;
 
 function makeAgent(opts: RunOptions, io: Io): Agent & { info?: Record<string, unknown> } {
   switch (opts.agent) {
@@ -156,34 +167,63 @@ function makeAgent(opts: RunOptions, io: Io): Agent & { info?: Record<string, un
 /** Runs an agent on one or all scenarios, writes traces, prints scores. */
 export async function cmdRun(opts: RunOptions, io: Io = defaultIo): Promise<{ results: Array<GradeResult & { trace: string }>; code: number }> {
   if (!opts.scenario && !opts.all) throw new Error("Pass --scenario <id> or --all");
-  const agent = makeAgent(opts, io);
+  const isClaude = opts.agent === "claude-code";
+  const agent: Agent & { info?: Record<string, unknown> } = isClaude
+    ? { name: "claude-code", info: opts.model ? { model: opts.model } : {}, run: async () => {} }
+    : makeAgent(opts, io);
   const scenarios: Scenario[] = opts.all ? loadScenarios(opts.scenariosDir) : [findScenario(opts.scenario!, opts.scenariosDir)];
+  const out = opts.out ?? (opts.submitter ? join("results", slug(opts.submitter), slug(opts.displayName ?? `${agent.name}${opts.model ? `-${opts.model}` : ""}`)) : "runs");
+  const [claudeBin, ...claudeArgs] = opts.claudeCommand ?? [process.env.STAYBENCH_CLAUDE_BIN ?? "claude"];
+  if (isClaude) io.err(`Using ${await checkClaudeCode(claudeBin, claudeArgs)}`);
+
   const results: Array<GradeResult & { trace: string }> = [];
-  for (const s of scenarios) {
-    const trace = defaultTracePath(s.id, agent.name, opts.out);
-    io.err(`> ${s.id} (${agent.name})`);
-    const session = await runAgent(agent, s, { tracePath: trace, ...(agent.info ? { agent: agent.info } : {}) });
+  for (const [i, s] of scenarios.entries()) {
+    // A submission holds exactly one trace per scenario: <out>/<scenario>.jsonl, overwritten on re-run.
+    const trace = opts.submitter ? join(out, `${s.id}.jsonl`) : defaultTracePath(s.id, agent.name, out);
+    io.err(`\n> [${i + 1}/${scenarios.length}] ${s.id} (${agent.name})`);
+    const sessionOpts = { tracePath: trace, ...(agent.info ? { agent: agent.info } : {}) };
+    const session = isClaude
+      ? await runClaudeCode(s, {
+          ...sessionOpts,
+          command: claudeBin,
+          commandArgs: claudeArgs,
+          ...(opts.model ? { model: opts.model } : {}),
+          ...(opts.maxTurns ? { maxTurns: opts.maxTurns } : {}),
+          log: (l) => io.err(`    ${l}`),
+        })
+      : await runAgent(agent, s, sessionOpts);
     const g = { ...gradeSession(s, session), mismatches: [], trace };
     results.push(g);
     if (!opts.json) io.out(explain(g));
   }
   if (opts.submitter) {
     const info = agent.info ?? {};
-    writeSubmissionMeta(opts.out, {
+    const model = typeof info.model === "string" ? info.model : undefined;
+    writeSubmissionMeta(out, {
       submitter: opts.submitter,
       agent: {
-        name: opts.displayName ?? (typeof info.model === "string" ? info.model : agent.name),
-        ...(typeof info.model === "string" ? { model: info.model } : {}),
-        client: `staybench run --agent ${agent.name}`,
+        name: opts.displayName ?? (isClaude ? `Claude Code${model ? ` (${model})` : ""}` : model ?? agent.name),
+        ...(model ? { model } : {}),
+        client: isClaude
+          ? "staybench run --agent claude-code (claude -p with --mcp-config, Streamable HTTP, built-in tools disabled)"
+          : `staybench run --agent ${agent.name}`,
       },
       date: new Date().toISOString().slice(0, 10),
       staybench_version: STAYBENCH_VERSION,
+      ...(isClaude ? { notes: `One run per scenario. Prompt: ${JSON.stringify(CLAUDE_CODE_PROMPT)} followed by the request as served by StayBench.` } : {}),
     });
   }
   if (opts.json) io.out(JSON.stringify(results, null, 2));
-  else if (results.length > 1) {
-    const avg = results.reduce((a, r) => a + r.score, 0) / results.length;
-    io.out(`\nAverage: ${avg.toFixed(1)}/100, passed ${results.filter((r) => r.passed).length}/${results.length}`);
+  else {
+    if (results.length > 1) {
+      io.out(`\n${"Scenario".padEnd(32)} Score  Result`);
+      for (const r of results) io.out(`${r.scenario_id.padEnd(32)} ${r.score.toFixed(1).padStart(5)}  ${r.passed ? "PASS" : "FAIL"}`);
+      const avg = results.reduce((a, r) => a + r.score, 0) / results.length;
+      io.out(`\nAverage: ${avg.toFixed(1)}/100, passed ${results.filter((r) => r.passed).length}/${results.length}`);
+    }
+    io.out(opts.submitter
+      ? `\nSubmission written to ${out}. See it on the leaderboard: pnpm site:dev, then http://localhost:4321/StayBench/`
+      : `\nTraces written to ${out}. Add --submitter <github-handle> to put the results on the leaderboard.`);
   }
   return { results, code: 0 };
 }

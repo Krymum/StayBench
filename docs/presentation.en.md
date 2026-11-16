@@ -109,6 +109,8 @@ doing everything else right.
 git clone https://github.com/Krymum/StayBench.git && cd StayBench
 pnpm install && pnpm build
 node dist/cli/index.js run --agent scripted-bad --scenario price-increase-within-budget
+node dist/cli/index.js run --agent claude-code --all --submitter <your-github-handle>   # Claude Code, all scenarios
+pnpm site:dev                                                                           # see the results
 ```
 
-Then connect your own agent: see the [README](../README.md#test-your-agent).
+Other agents: see the [README](../README.md#test-any-mcp-agent-interactively).

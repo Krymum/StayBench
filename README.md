@@ -113,38 +113,123 @@ in a JSONL trace, which the grader replays against the simulator before scoring.
 
 ## Quick start
 
-Node.js 22+ and pnpm (`npm i -g pnpm`):
+You need Node.js 22+ and pnpm (`npm i -g pnpm`). Install once:
 
 ```sh
 git clone https://github.com/Krymum/StayBench.git && cd StayBench
 pnpm install && pnpm build
+```
 
-node dist/cli/index.js list                                                              # 29 scenarios
+Check that it works, with the two built-in reference agents (no LLM, no API key, a few seconds):
+
+```sh
+node dist/cli/index.js list                                                              # the 29 scenarios
 node dist/cli/index.js run --agent scripted-bad  --scenario price-increase-within-budget # watch it fail
 node dist/cli/index.js run --agent scripted-good --scenario price-increase-within-budget # and pass
 ```
 
-The examples below write `staybench` for short: run them as `node dist/cli/index.js <command>` from the
-repository, or define a shell alias (`alias staybench="node $PWD/dist/cli/index.js"`).
+All commands run from the repository folder. To type `staybench` instead of `node dist/cli/index.js`, define an
+alias: `alias staybench="node $PWD/dist/cli/index.js"` (bash/zsh) or
+`function staybench { node "$PWD\dist\cli\index.js" @args }` (PowerShell). The rest of this page uses `staybench`.
 
-## Test your agent
+## What happens in a run
 
-Start a run. The server prints the traveler's request (with the simulated date) on stderr and records a trace:
+A run is one scenario played by one agent, from the traveler's request to the agent's final report:
 
-```sh
-staybench serve --scenario timeout-ghost-booking --transport http
-# MCP endpoint (Streamable HTTP): http://127.0.0.1:3333/mcp
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant S as StayBench (MCP server)
+    A->>S: reads the traveler's request
+    loop until the agent is done
+        A->>S: search_hotels, get_rates, prebook, book, ask_traveler, wait...
+        S-->>A: simulated supplier answers, with the scenario's faults
+    end
+    A->>S: submit_final_report (booking, price, refundability)
+    Note over S: grade printed, trace saved
 ```
 
-Give the request to your agent and let it work until `submit_final_report`. The grade is printed as soon as the
-report arrives. Re-grade any trace later with `staybench grade runs/<scenario>/<file>.jsonl`.
+1. StayBench serves one scenario over MCP and gives the agent the **traveler's request** (city, dates, budget,
+   constraints, and the simulated date of "today").
+2. The agent works with the **10 tools** of a simulated hotel supplier. The scenario injects its faults along the
+   way: a price change, a sold-out room, a timeout that still created a booking...
+3. The agent ends with **`submit_final_report`**. StayBench grades the run at once (score out of 100, pass at 80,
+   one sentence per lost point) and saves every call in a **trace** (`.jsonl`).
+4. Traces can be re-graded any time (`staybench grade <trace>`) and published on the **leaderboard**.
 
-**With Claude Code**: register the endpoint once, then restart `serve` with another `--scenario` for each run.
-The request is also available as the MCP prompt `traveler_request`.
+## Choose how to test
+
+| You want to | Do this | Section |
+|---|---|---|
+| Benchmark **Claude Code** on every scenario | One command, fully automatic | [Test Claude Code](#test-claude-code-one-command) |
+| Watch an agent work, in **any MCP client** (Claude Code, Cursor, Claude Desktop...) | Start a server, connect, paste the request | [Interactive](#test-any-mcp-agent-interactively) |
+| Benchmark a **local model** (Ollama, LM Studio...) | One command, fully automatic | [Local model](#test-a-local-model) |
+| See your results **on the leaderboard** | Add `--submitter`, then `pnpm site:dev` | [Submit](#submit-your-result) |
+
+## Test Claude Code: one command
+
+Requirement: the Claude Code CLI works in your terminal (`claude --version` prints a version).
+
+```sh
+staybench run --agent claude-code --scenario happy-path                    # try one scenario first
+staybench run --agent claude-code --all --submitter <your-github-handle>   # then all of them
+pnpm site:dev                                                               # open http://localhost:4321/StayBench/
+```
+
+There is no server to start, no MCP endpoint to register and no request to copy. For each scenario, StayBench:
+
+1. starts its MCP server on a free local port;
+2. starts a fresh, headless Claude Code session (`claude -p`) in an empty temporary folder, with only the 10
+   StayBench tools: no shell, no files, no web, so it cannot read the scenarios or the answers;
+3. sends it the traveler's request and waits until it exits;
+4. prints the grade, and at the end a table of every score with the average.
+
+With `--submitter`, the traces and a `meta.json` are written to `results/<your-github-handle>/claude-code/`, the
+folder layout the leaderboard reads. Running again overwrites them. Without `--submitter`, the grades are only
+printed and the traces go to `runs/`.
+
+| Option | Effect |
+|---|---|
+| `--scenario <id>` instead of `--all` | Run one scenario (ids: `staybench list`) |
+| `--model <name>` | Model given to Claude Code (`--model opus`, `--model claude-sonnet-5-5`...) |
+| `--name "<display name>"` | Name shown on the leaderboard; also the folder name |
+| `--out <dir>` | Write the results to another folder |
+| `--max-turns <n>` | Turn limit per scenario (default 80) |
+
+Each scenario is a real Claude Code session: all 29 take a while and use your Claude quota. If `claude` is not on
+your `PATH`, set `STAYBENCH_CLAUDE_BIN` to the executable.
+
+## Test any MCP agent, interactively
+
+Use this to watch an agent work in a normal chat, one scenario at a time. You need two terminals: one for the
+StayBench server, one for your agent.
+
+**1. Start the server** in the first terminal, and leave it running:
+
+```sh
+staybench serve --scenario happy-path --transport http
+```
+
+It prints the traveler's request, then `MCP endpoint (Streamable HTTP): http://127.0.0.1:3333/mcp`.
+
+**2. Connect your agent** to that endpoint. With Claude Code, register it once (it is remembered):
 
 ```sh
 claude mcp add --transport http staybench http://127.0.0.1:3333/mcp
 ```
+
+Then, in Claude Code, type `/mcp` and check that `staybench` is connected. The endpoint only exists while the
+server runs: `ECONNREFUSED` means the server is not started (step 1). Each time you restart the server, type `/mcp`
+again to reconnect.
+
+**3. Paste the request** printed by the server into your agent, and nothing else: do not tell it the scenario name
+or the trap. It works until it calls `submit_final_report`. The grade then appears in the server's terminal. (The
+request is also available as the MCP prompt `traveler_request`.)
+
+**Next scenario:** stop the server (Ctrl+C) and start it again with another `--scenario`. In Claude Code, type
+`/clear` (so the agent does not remember the previous run) and `/mcp`, then paste the new request.
+
+Traces go to `runs/<scenario>/`. Re-grade one with `staybench grade runs/<scenario>/<file>.jsonl`.
 
 <details>
 <summary><b>Other MCP clients</b> (Claude Desktop, Cursor, MCP Inspector, stdio)</summary>
@@ -178,17 +263,17 @@ Use `node dist/...` (not `pnpm staybench`) for stdio: stdout is the MCP channel 
 
 </details>
 
-<details>
-<summary><b>With a free local model</b> (Ollama, llama.cpp, LM Studio, vLLM)</summary>
+## Test a local model
 
-Any OpenAI-compatible endpoint works. The model only receives the traveler's request and the tools.
+Free, offline: any OpenAI-compatible endpoint works (Ollama, llama.cpp, LM Studio, vLLM). As with Claude Code, it
+is fully automatic, and the model only receives the traveler's request and the tools.
 
 ```sh
 ollama pull qwen3:8b
 staybench run --agent local-openai --base-url http://localhost:11434/v1 --model qwen3:8b --all
 ```
 
-</details>
+Add `--submitter <your-github-handle>` to put the result on the leaderboard.
 
 ## The 29 scenarios
 
@@ -242,14 +327,18 @@ Details and limits: [METHODOLOGY.md](METHODOLOGY.md).
 
 ## Submit your result
 
+Any `run` with `--submitter` writes a submission: one `<scenario>.jsonl` per scenario and a `meta.json`, in
+`results/<your-github-handle>/<agent>/` unless you pass `--out`.
+
 ```sh
-staybench run --agent local-openai --base-url http://localhost:11434/v1 --model qwen3:8b \
-  --all --out results/<your-github-handle>/qwen3-8b --submitter <your-github-handle>
-staybench verify results
+staybench run --agent claude-code --all --submitter <your-github-handle>
+staybench run --agent local-openai --base-url http://localhost:11434/v1 --model qwen3:8b --all --submitter <your-github-handle>
+staybench verify results    # what CI checks
+pnpm site:dev               # see it on the leaderboard, locally
 ```
 
 Open a pull request that only touches `results/`. CI replays each trace and recomputes the score. Agents driven
-through an MCP client can submit too: see [METHODOLOGY.md](METHODOLOGY.md#submitting-a-result).
+through another MCP client can submit too: see [METHODOLOGY.md](METHODOLOGY.md#submitting-a-result).
 
 <details>
 <summary><b>The 10 tools exposed to the agent</b></summary>
@@ -289,7 +378,7 @@ src/
   scenarios/   scenario schema and loader
   grader/      deterministic grader
   trace/       JSONL traces and replay
-  agents/      scripted agents and the OpenAI-compatible adapter
+  agents/      scripted agents, the OpenAI-compatible adapter and the Claude Code runner
   leaderboard/ submission verification
   cli/         the staybench command
 scenarios/     the 29 YAML scenarios

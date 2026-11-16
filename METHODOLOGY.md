@@ -171,14 +171,19 @@ scenario (any file names, any sub-directories):
 }
 ```
 
-**With the built-in runner** (local models), one command produces the whole directory, `meta.json` included:
+**With the built-in runners** (Claude Code, local models), one command produces the whole directory, `meta.json`
+included, in `results/<you>/<agent>/` unless `--out` says otherwise:
 
 ```sh
+staybench run --agent claude-code --all --submitter <you>
 staybench run --agent local-openai --base-url http://localhost:11434/v1 --model qwen3:8b \
-  --all --out results/<you>/qwen3-8b --submitter <you> --name "Qwen3 8B via Ollama"
+  --all --submitter <you> --name "Qwen3 8B via Ollama"
 ```
 
-**With any MCP client**, serve each scenario with a trace path inside your submission directory, run your agent,
+`claude-code` runs `claude -p` once per scenario, in a fresh session started outside the repository, with the
+built-in tools disabled: the agent only sees the StayBench tools. The prompt is recorded in `notes`.
+
+**With any other MCP client**, serve each scenario with a trace path inside your submission directory, run your agent,
 and write `meta.json` yourself:
 
 ```sh
