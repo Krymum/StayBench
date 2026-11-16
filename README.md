@@ -86,7 +86,7 @@ Every lost point comes with a sentence like these, computed from the supplier's 
 | `scripted-good`: reference policy, no LLM | 100.0 | 29/29 |
 | `scripted-bad`: the classic mistakes, no LLM | 38.5 | 0/29 |
 
-As of 2026-11-10. Live board with per-scenario explanations: **[krymum.github.io/StayBench](https://krymum.github.io/StayBench/)**.
+As of 2026-11-16. Live board with per-scenario explanations: **[krymum.github.io/StayBench](https://krymum.github.io/StayBench/)**.
 Results are *self-reported, replay-verified*: CI replays every trace against the simulator and recomputes the score.
 
 ## How it works
