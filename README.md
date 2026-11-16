@@ -118,19 +118,23 @@ You need Node.js 22+ and pnpm (`npm i -g pnpm`). Install once:
 ```sh
 git clone https://github.com/Krymum/StayBench.git && cd StayBench
 pnpm install && pnpm build
+npm link            # makes the `staybench` command available in every terminal
 ```
+
+`npm link` only adds a global `staybench` command pointing to this folder (undo it with `npm unlink -g staybench`).
+Without it, type `node dist/cli/index.js` wherever this page says `staybench`, from the repository folder. On
+Windows, if PowerShell refuses to run `staybench` because "running scripts is disabled", type `staybench.cmd`, or
+allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
 Check that it works, with the two built-in reference agents (no LLM, no API key, a few seconds):
 
 ```sh
-node dist/cli/index.js list                                                              # the 29 scenarios
-node dist/cli/index.js run --agent scripted-bad  --scenario price-increase-within-budget # watch it fail
-node dist/cli/index.js run --agent scripted-good --scenario price-increase-within-budget # and pass
+staybench list                                                              # the 29 scenarios
+staybench run --agent scripted-bad  --scenario price-increase-within-budget # watch it fail
+staybench run --agent scripted-good --scenario price-increase-within-budget # and pass
 ```
 
-All commands run from the repository folder. To type `staybench` instead of `node dist/cli/index.js`, define an
-alias: `alias staybench="node $PWD/dist/cli/index.js"` (bash/zsh) or
-`function staybench { node "$PWD\dist\cli\index.js" @args }` (PowerShell). The rest of this page uses `staybench`.
+Run the commands from the repository folder: results are written to `runs/` and `results/` there.
 
 ## What happens in a run
 
