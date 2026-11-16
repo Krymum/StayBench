@@ -111,31 +111,6 @@ in a JSONL trace, which the grader replays against the simulator before scoring.
 - **A traveler to talk to.** `ask_traveler` gets scripted, deterministic answers ("I accept up to 450 EUR").
 - **Grounded grading.** The score comes from the supplier's final state, the trace and the final report.
 
-## Quick start
-
-You need Node.js 22+ and pnpm (`npm i -g pnpm`). Install once:
-
-```sh
-git clone https://github.com/Krymum/StayBench.git && cd StayBench
-pnpm install && pnpm build
-npm link            # makes the `staybench` command available in every terminal
-```
-
-`npm link` only adds a global `staybench` command pointing to this folder (undo it with `npm unlink -g staybench`).
-Without it, type `node dist/cli/index.js` wherever this page says `staybench`, from the repository folder. On
-Windows, if PowerShell refuses to run `staybench` because "running scripts is disabled", type `staybench.cmd`, or
-allow local scripts once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
-
-Check that it works, with the two built-in reference agents (no LLM, no API key, a few seconds):
-
-```sh
-staybench list                                                              # the 29 scenarios
-staybench run --agent scripted-bad  --scenario price-increase-within-budget # watch it fail
-staybench run --agent scripted-good --scenario price-increase-within-budget # and pass
-```
-
-Run the commands from the repository folder: results are written to `runs/` and `results/` there.
-
 ## What happens in a run
 
 A run is one scenario played by one agent, from the traveler's request to the agent's final report:
@@ -161,14 +136,68 @@ sequenceDiagram
    one sentence per lost point) and saves every call in a **trace** (`.jsonl`).
 4. Traces can be re-graded any time (`staybench grade <trace>`) and published on the **leaderboard**.
 
-## Choose how to test
+## Getting started, step by step
 
-| You want to | Do this | Section |
+New to StayBench? Follow these five steps in order. They take about ten minutes, plus the time of your agent's runs.
+
+### Step 1. Check the prerequisites
+
+| Tool | Check | Install |
 |---|---|---|
-| Benchmark **Claude Code** on every scenario | One command, fully automatic | [Test Claude Code](#test-claude-code-one-command) |
-| Watch an agent work, in **any MCP client** (Claude Code, Cursor, Claude Desktop...) | Start a server, connect, paste the request | [Interactive](#test-any-mcp-agent-interactively) |
-| Benchmark a **local model** (Ollama, LM Studio...) | One command, fully automatic | [Local model](#test-a-local-model) |
-| See your results **on the leaderboard** | Add `--submitter`, then `pnpm site:dev` | [Submit](#submit-your-result) |
+| Git | `git --version` | [git-scm.com](https://git-scm.com/) |
+| Node.js 22 or later | `node --version` prints `v22` or more | [nodejs.org](https://nodejs.org/) (LTS) |
+| pnpm | `pnpm --version` | `npm install -g pnpm` |
+| Claude Code (only to test Claude Code) | `claude --version` | [claude.com/claude-code](https://claude.com/claude-code) |
+
+### Step 2. Install StayBench
+
+```sh
+git clone https://github.com/Krymum/StayBench.git
+cd StayBench
+pnpm install
+pnpm build
+npm link
+```
+
+`npm link` creates the `staybench` command, in every terminal. It only adds a link to this folder; undo it with
+`npm unlink -g staybench`. Without it, type `node dist/cli/index.js` instead of `staybench`, from this folder.
+
+Always run StayBench **from the `StayBench` folder**: it writes its results there, in `runs/` and `results/`.
+
+### Step 3. Check that it works
+
+These two reference agents are plain code (no AI, no API key) and take a few seconds:
+
+```sh
+staybench list                                                              # the 29 scenarios
+staybench run --agent scripted-bad  --scenario price-increase-within-budget # a careless agent: FAIL
+staybench run --agent scripted-good --scenario price-increase-within-budget # a careful agent: PASS
+```
+
+Each run ends with a grade out of 100 and one sentence per lost point. If something goes wrong here, see
+[Troubleshooting](#troubleshooting).
+
+### Step 4. Test an agent
+
+Pick the line that matches your agent. Each one has its own section below.
+
+| Your agent | What to do | Section |
+|---|---|---|
+| **Claude Code** | One command runs every scenario automatically | [Test Claude Code](#test-claude-code-one-command) |
+| **Your own agent or MCP client** (in-house agent, Cursor, Claude Desktop...) | Start a StayBench server, connect your agent to it, give it the request | [Test your own agent](#test-your-own-agent-or-any-mcp-client) |
+| **A local model** (Ollama, LM Studio...) | One command runs every scenario automatically | [Local model](#test-a-local-model) |
+
+### Step 5. Look at the results
+
+- **In the terminal**: every run prints its grade; `run --all` ends with a table of every scenario and the average.
+- **On the leaderboard**, with charts and a per-scenario breakdown: add `--submitter <your-name>` to `run`, then
+  start the site and open http://localhost:4321/StayBench/
+
+  ```sh
+  pnpm site:dev
+  ```
+
+- **Afterwards**: re-grade any saved trace with `staybench grade <file.jsonl>`.
 
 ## Test Claude Code: one command
 
@@ -203,10 +232,22 @@ printed and the traces go to `runs/`.
 Each scenario is a real Claude Code session: all 29 take a while and use your Claude quota. If `claude` is not on
 your `PATH`, set `STAYBENCH_CLAUDE_BIN` to the executable.
 
-## Test any MCP agent, interactively
+## Test your own agent (or any MCP client)
 
-Use this to watch an agent work in a normal chat, one scenario at a time. You need two terminals: one for the
-StayBench server, one for your agent.
+StayBench plays the hotel supplier: it is an **MCP server**. Any agent that can use the tools of an MCP server can
+be tested, whoever built it.
+
+**What your agent needs**
+
+- To connect to an MCP server, over **Streamable HTTP** (a URL, recommended) or **stdio** (StayBench started as a
+  subprocess).
+- To receive the **traveler's request** as its task. It is plain text, printed by the server; your agent can also
+  read it from the MCP prompt `traveler_request`.
+- To do the booking with the 10 tools (listed [below](#the-10-tools)) and to **finish with
+  `submit_final_report`**. That call ends the run and triggers the grade. Without it, the run scores at most 50.
+
+**How it goes:** one server = one scenario = one run. You need two terminals: one for the StayBench server, one
+for your agent.
 
 **1. Start the server** in the first terminal, and leave it running:
 
@@ -214,9 +255,17 @@ StayBench server, one for your agent.
 staybench serve --scenario happy-path --transport http
 ```
 
-It prints the traveler's request, then `MCP endpoint (Streamable HTTP): http://127.0.0.1:3333/mcp`.
+It prints the traveler's request, then `MCP endpoint (Streamable HTTP): http://127.0.0.1:3333/mcp`. Use
+`--port <n>` if port 3333 is taken.
 
-**2. Connect your agent** to that endpoint. With Claude Code, register it once (it is remembered):
+**2. Connect your agent** to `http://127.0.0.1:3333/mcp`, the way your agent or framework declares MCP servers.
+Most clients accept this JSON:
+
+```json
+{ "mcpServers": { "staybench": { "type": "http", "url": "http://127.0.0.1:3333/mcp" } } }
+```
+
+With Claude Code, register it once (it is remembered):
 
 ```sh
 claude mcp add --transport http staybench http://127.0.0.1:3333/mcp
@@ -226,14 +275,20 @@ Then, in Claude Code, type `/mcp` and check that `staybench` is connected. The e
 server runs: `ECONNREFUSED` means the server is not started (step 1). Each time you restart the server, type `/mcp`
 again to reconnect.
 
-**3. Paste the request** printed by the server into your agent, and nothing else: do not tell it the scenario name
-or the trap. It works until it calls `submit_final_report`. The grade then appears in the server's terminal. (The
-request is also available as the MCP prompt `traveler_request`.)
+**3. Give the request** printed by the server to your agent, and nothing else: do not tell it the scenario name or
+the trap, that is what is being tested. It works until it calls `submit_final_report`. The grade then appears in
+the server's terminal, and the trace is saved in `runs/<scenario>/`.
 
-**Next scenario:** stop the server (Ctrl+C) and start it again with another `--scenario`. In Claude Code, type
-`/clear` (so the agent does not remember the previous run) and `/mcp`, then paste the new request.
+**4. Next scenario:** stop the server (Ctrl+C) and start it again with another `--scenario` (ids:
+`staybench list`). Start your agent on a fresh conversation, so that it does not remember the previous run (in
+Claude Code: `/clear`, then `/mcp` to reconnect), and give it the new request.
 
-Traces go to `runs/<scenario>/`. Re-grade one with `staybench grade runs/<scenario>/<file>.jsonl`.
+**To put your agent on the leaderboard**, record each run straight into a submission folder with `--trace`, then
+add a `meta.json` (see [Submit your result](#submit-your-result)):
+
+```sh
+staybench serve --scenario happy-path --transport http --trace results/<your-name>/<agent-name>/happy-path.jsonl
+```
 
 <details>
 <summary><b>Other MCP clients</b> (Claude Desktop, Cursor, MCP Inspector, stdio)</summary>
@@ -344,8 +399,9 @@ pnpm site:dev               # see it on the leaderboard, locally
 Open a pull request that only touches `results/`. CI replays each trace and recomputes the score. Agents driven
 through another MCP client can submit too: see [METHODOLOGY.md](METHODOLOGY.md#submitting-a-result).
 
-<details>
-<summary><b>The 10 tools exposed to the agent</b></summary>
+## The 10 tools
+
+What the agent sees, as MCP tools of the `staybench` server:
 
 | Tool | Purpose |
 |---|---|
@@ -360,7 +416,19 @@ through another MCP client can submit too: see [METHODOLOGY.md](METHODOLOGY.md#s
 | `wait` | Let simulated time pass (Retry-After, pending bookings) |
 | `submit_final_report` | Mandatory last step: booking id, total, currency, refundability, free-cancellation deadline |
 
-</details>
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `staybench` is not recognized / command not found | The command was not installed | Run `npm link` in the `StayBench` folder (step 2), then open a new terminal. Or type `node dist/cli/index.js` instead of `staybench` |
+| PowerShell: "running scripts is disabled on this system" | Windows blocks the `staybench.ps1` launcher | Type `staybench.cmd`, or run once `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
+| `Cannot find module ... dist/cli/index.js` | The project was not built | `pnpm install` then `pnpm build` |
+| Your agent says `ECONNREFUSED` on `127.0.0.1:3333` | No StayBench server is running | Start `staybench serve ... --transport http` and leave it running, then reconnect (`/mcp` in Claude Code) |
+| `Port 3333 is already in use` | A previous server is still running | Stop it with Ctrl+C in its terminal, or add `--port 3334` (and use that port in your agent) |
+| Every tool answers `RUN_FINISHED` | A server runs one scenario only: the run ended at `submit_final_report` | Restart `serve` (with the next `--scenario`) |
+| `Claude Code CLI not found` | `claude` is not installed or not on the `PATH` | Check `claude --version`; or set `STAYBENCH_CLAUDE_BIN` to the full path of the executable |
+| A run never ends | The agent never called `submit_final_report` | Stop the server with Ctrl+C: the run is graded as "no report" (at most 50). Tell your agent it must always end with that tool |
+| The leaderboard does not show your run | It reads `results/` only, with a `meta.json` per agent | Use `--submitter` with `run`, then restart `pnpm site:dev`; `staybench verify results` lists any problem |
 
 <details>
 <summary><b>Development and project layout</b></summary>

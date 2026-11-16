@@ -120,4 +120,4 @@ pnpm site:dev                                                                   
 
 La deuxième commande lance Claude Code sur chaque scénario, sans serveur à démarrer ni demande à copier, et range
 les résultats dans `results/` ; la troisième affiche le classement sur http://localhost:4321/StayBench/. Pour les
-autres agents : voir le [README](../README.md#test-any-mcp-agent-interactively).
+autres agents : voir le [README](../README.md#getting-started-step-by-step).

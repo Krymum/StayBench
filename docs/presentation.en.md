@@ -113,4 +113,4 @@ node dist/cli/index.js run --agent claude-code --all --submitter <your-github-ha
 pnpm site:dev                                                                           # see the results
 ```
 
-Other agents: see the [README](../README.md#test-any-mcp-agent-interactively).
+Other agents: see the [README](../README.md#getting-started-step-by-step).
